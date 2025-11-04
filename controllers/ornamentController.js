@@ -13,6 +13,7 @@ export const uploadOrnamentImages = upload.fields([
 ]);
 
 // ✅ Add Ornament
+// ✅ Add Ornament
 export const addOrnament = async (req, res) => {
   try {
     console.log("🧩 Incoming Ornament Request:");
@@ -23,15 +24,9 @@ export const addOrnament = async (req, res) => {
     const coverImage = req.files?.coverImage?.[0]?.path || null;
     const images = req.files?.images ? req.files.images.map((f) => f.path) : [];
     const model3D = req.files?.model3D?.[0]?.path || req.body.model3D || null;
-    // ✅ Extract uploaded video
-let videoUrl = null;
-if (req.files?.videoFile?.[0]) {
-  videoUrl = req.files.videoFile[0].path; // Cloudinary or local path
-}
+    let videoUrl = req.files?.videoFile?.[0]?.path || null;
 
-   
-
-    // ✅ Ensure category & subCategory are strings (not arrays)
+    // ✅ Ensure category & subCategory are strings
     const category = Array.isArray(req.body.category)
       ? req.body.category[0]
       : req.body.category || null;
@@ -53,7 +48,20 @@ if (req.files?.videoFile?.[0]) {
       }
     }
 
-    // ✅ Parse variantLinks safely (optional)
+    // ✅ Parse makingChargesByCountry safely
+    let makingChargesByCountry = {};
+    if (req.body.makingChargesByCountry) {
+      try {
+        makingChargesByCountry =
+          typeof req.body.makingChargesByCountry === "string"
+            ? JSON.parse(req.body.makingChargesByCountry)
+            : req.body.makingChargesByCountry;
+      } catch (err) {
+        console.warn("⚠️ Invalid makingChargesByCountry JSON:", req.body.makingChargesByCountry);
+      }
+    }
+
+    // ✅ Parse variantLinks safely
     let variantLinks = {};
     if (req.body.variantLinks) {
       try {
@@ -62,7 +70,6 @@ if (req.files?.videoFile?.[0]) {
             ? JSON.parse(req.body.variantLinks)
             : req.body.variantLinks;
 
-        // Remove any empty values ("")
         Object.keys(variantLinks).forEach((key) => {
           if (!variantLinks[key]) delete variantLinks[key];
         });
@@ -71,7 +78,9 @@ if (req.files?.videoFile?.[0]) {
       }
     }
 
-    const originalPrice = Number(req.body.originalPrice) || price; // fallback to same price
+    // ✅ FIXED: define price before using it
+    const price = Number(req.body.price) || 0;
+    const originalPrice = Number(req.body.originalPrice) || price;
     let discount = Number(req.body.discount) || 0;
 
     // ✅ Auto-calculate discount if not provided
@@ -79,20 +88,66 @@ if (req.files?.videoFile?.[0]) {
       discount = Math.round(((originalPrice - price) / originalPrice) * 100);
     }
 
+    const rating = req.body.rating ? Number(req.body.rating) : 0;
+
+    // ✅ Handle diamond details
+    let diamondDetails;
+    let sideDiamondDetails;
+
+    if (req.body.categoryType === "Diamond") {
+      if (req.body.diamondDetails) {
+        try {
+          diamondDetails =
+            typeof req.body.diamondDetails === "string"
+              ? JSON.parse(req.body.diamondDetails)
+              : req.body.diamondDetails;
+        } catch (err) {
+          console.warn("⚠️ Invalid diamondDetails JSON:", req.body.diamondDetails);
+        }
+      }
+
+      if (req.body.sideDiamondDetails) {
+        try {
+          sideDiamondDetails =
+            typeof req.body.sideDiamondDetails === "string"
+              ? JSON.parse(req.body.sideDiamondDetails)
+              : req.body.sideDiamondDetails;
+        } catch (err) {
+          console.warn("⚠️ Invalid sideDiamondDetails JSON:", req.body.sideDiamondDetails);
+        }
+      }
+
+      if (!diamondDetails) {
+        return res.status(400).json({
+          success: false,
+          message: "Diamond products must include 'diamondDetails'.",
+        });
+      }
+    }
+
+    // ✅ Auto-assign type from category if missing
+const type = req.body.type || req.body.category || "other";
+
+
     // ✅ Prepare final document
     const ornamentData = {
       ...req.body,
+       type,
       category,
       subCategory,
       coverImage,
       images,
       prices,
-      variantLinks: Object.keys(variantLinks).length ? variantLinks : undefined, // optional
+      price, // ✅ ensure base price is saved
+      makingChargesByCountry,
+      variantLinks: Object.keys(variantLinks).length ? variantLinks : undefined,
       model3D,
       videoUrl,
       originalPrice,
       discount,
-    
+      rating,
+      diamondDetails,
+      sideDiamondDetails,
     };
 
     // ✅ Create Ornament
@@ -104,14 +159,15 @@ if (req.files?.videoFile?.[0]) {
       ornament,
     });
   } catch (err) {
-  res.status(500).json({
-    success: false,
-    message: err.message || "Server Error",
-    error: err.stack || err,
-  });
-
+    console.error("❌ Add Ornament Error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message || "Server Error",
+      error: err.stack || err,
+    });
   }
 };
+
 
 // ✅ Get Single Ornament by ID
 export const getOrnamentById = async (req, res) => {
@@ -142,14 +198,38 @@ export const getOrnamentById = async (req, res) => {
       symbol = selectedCurrency.symbol;
     }
 
+     let makingCharge = 0;
+
+    if (ornament.makingChargesByCountry && ornament.makingChargesByCountry[curr]) {
+      // ✅ If country-specific making charge exists
+      makingCharge = ornament.makingChargesByCountry[curr].amount;
+    } else if (curr !== "INR" && currencyRates[curr]) {
+      // ✅ Convert base makingCharges dynamically
+      makingCharge = (ornament.makingCharges || 0) * currencyRates[curr].rate;
+    } else {
+      // ✅ Fallback to INR
+      makingCharge = ornament.makingCharges || 0;
+    }
+
+     const diamondInfo =
+      ornament.categoryType === "Diamond"
+        ? {
+            diamondDetails: ornament.diamondDetails || null,
+            sideDiamondDetails: ornament.sideDiamondDetails || null,
+          }
+        : {};
+
     res.status(200).json({
       success: true,
       ornament: {
         ...ornament.toObject(),
+         ...diamondInfo,
         priceInINR: ornament.price,
         displayPrice: Number(finalPrice.toFixed(2)),
+        convertedMakingCharge: Number(makingCharge.toFixed(2)),
         currency: symbol,
         prices: ornament.prices || {},
+         makingChargesByCountry: ornament.makingChargesByCountry || {},
          model3D: ornament.model3D || null,
          originalPrice: ornament.originalPrice || ornament.price, // ✅ added
         discount:
@@ -291,13 +371,25 @@ export const getOrnaments = async (req, res) => {
 };
 
 // ✅ Update Ornament
-export const updateOrnament = async (req, res) => {
+  export const updateOrnament = async (req, res) => {
   try {
-    const { images, addImage, removeImage, sku, prices, variantLinks, ...updateData } =
-      req.body;
+    const {
+      images,
+      addImage,
+      removeImage,
+      sku,
+      prices,
+      variantLinks,
+      diamondDetails,
+      makingChargesByCountry,
+      sideDiamondDetails,
+      ...updateData
+    } = req.body;
 
     if (sku) {
-      return res.status(400).json({ message: "SKU cannot be updated manually" });
+      return res
+        .status(400)
+        .json({ message: "SKU cannot be updated manually" });
     }
 
     const updateOps = { $set: { ...updateData } };
@@ -312,7 +404,22 @@ export const updateOrnament = async (req, res) => {
       }
     }
 
-    // ✅ Handle variantLinks update
+    // ✅ Handle makingChargesByCountry
+    if (makingChargesByCountry) {
+      try {
+        updateOps.$set.makingChargesByCountry =
+          typeof makingChargesByCountry === "string"
+            ? JSON.parse(makingChargesByCountry)
+            : makingChargesByCountry;
+      } catch (err) {
+        console.warn(
+          "⚠️ Invalid makingChargesByCountry format, skipping:",
+          makingChargesByCountry
+        );
+      }
+    } // ✅ Closed missing brace here
+
+    // ✅ Handle variantLinks
     if (variantLinks) {
       try {
         updateOps.$set.variantLinks =
@@ -335,7 +442,8 @@ export const updateOrnament = async (req, res) => {
     if (addImage) updateOps.$push = { images: addImage };
     if (removeImage) updateOps.$pull = { images: removeImage };
 
-     if (updateData.price) updateOps.$set.price = Number(updateData.price);
+    // ✅ Update numeric fields
+    if (updateData.price) updateOps.$set.price = Number(updateData.price);
     if (updateData.originalPrice)
       updateOps.$set.originalPrice = Number(updateData.originalPrice);
     if (updateData.discount)
@@ -352,16 +460,50 @@ export const updateOrnament = async (req, res) => {
       );
     }
 
-    const ornament = await Ornament.findByIdAndUpdate(req.params.id, updateOps, {
-      new: true,
-      runValidators: true,
-    }).populate("variantLinks");
+    // ✅ Handle diamond details
+    if (diamondDetails) {
+      try {
+        updateOps.$set.diamondDetails =
+          typeof diamondDetails === "string"
+            ? JSON.parse(diamondDetails)
+            : diamondDetails;
+      } catch (err) {
+        console.warn("⚠️ Invalid diamondDetails format:", diamondDetails);
+      }
+    }
+
+    // 💎 Handle side diamond details (optional)
+    if (sideDiamondDetails) {
+      try {
+        updateOps.$set.sideDiamondDetails =
+          typeof sideDiamondDetails === "string"
+            ? JSON.parse(sideDiamondDetails)
+            : sideDiamondDetails;
+      } catch (err) {
+        console.warn(
+          "⚠️ Invalid sideDiamondDetails format:",
+          sideDiamondDetails
+        );
+      }
+    }
+
+    // ✅ Perform DB update
+    const ornament = await Ornament.findByIdAndUpdate(
+      req.params.id,
+      updateOps,
+      {
+        new: true,
+        runValidators: true,
+      }
+    ).populate("variantLinks");
 
     if (!ornament) {
       return res.status(404).json({ message: "Ornament not found" });
     }
 
-    res.status(200).json({ message: "Ornament updated successfully", ornament });
+    res
+      .status(200)
+      .json({ message: "Ornament updated successfully", ornament });
   } catch (err) {
     res.status(500).json({
       message: "Failed to update ornament",
@@ -369,6 +511,7 @@ export const updateOrnament = async (req, res) => {
     });
   }
 };
+
 
 // ✅ Delete Ornament
 export const deleteOrnament = async (req, res) => {

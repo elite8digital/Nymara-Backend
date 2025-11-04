@@ -129,7 +129,11 @@ router.get("/ornaments", async (req, res) => {
     if (sort === "oldest") sortOption = { createdAt: 1 };
     if (sort === "featured") sortOption = { isFeatured: -1, createdAt: -1 };
 
-    const ornaments = await Ornament.find(filter).sort(sortOption);
+    
+
+    // 🔹 Fetch ornaments
+   // 🔹 Fetch ornaments (NO LIMIT)
+const ornaments = await Ornament.find(filter).sort(sortOption);
 
 
     const total = await Ornament.countDocuments(filter);
@@ -163,6 +167,7 @@ router.get("/ornaments", async (req, res) => {
     res.json({
       success: true,
       total,
+     
       count: ornaments.length,
       ornaments: ornamentsWithCurrency,
     });
@@ -219,6 +224,26 @@ router.get("/ornaments/:id", async (req, res) => {
       symbol = currencyRates[currency.toUpperCase()].symbol;
     }
 
+     let convertedMakingCharge = ornament.makingCharges || 0;
+
+    if (ornament.makingChargesByCountry && ornament.makingChargesByCountry[currency]) {
+      // ✅ Use predefined making charge if exists
+      convertedMakingCharge = ornament.makingChargesByCountry[currency].amount;
+    } else if (currencyRates[currency]) {
+      // ✅ Convert dynamically
+      convertedMakingCharge = Number(
+        ((ornament.makingCharges || 0) * currencyRates[currency].rate).toFixed(2)
+      );
+    }
+
+    const diamondInfo =
+      ornament.categoryType === "Diamond"
+        ? {
+            diamondDetails: ornament.diamondDetails || null,
+            sideDiamondDetails: ornament.sideDiamondDetails || null,
+          }
+        : {};
+
       const price = ornament.price || 0;
     const originalPrice = ornament.originalPrice || price;
     const discount =
@@ -226,13 +251,20 @@ router.get("/ornaments/:id", async (req, res) => {
       Math.round(((originalPrice - price) / originalPrice) * 100) ||
       0;
 
+    const totalConvertedPrice = Number(
+      (convertedPrice + convertedMakingCharge).toFixed(2)
+    );
+
     res.json({
       success: true,
       count: 1,
       ornament: {
         ...ornament.toObject(),
+        ...diamondInfo,
         priceInINR: ornament.price,
         convertedPrice,
+        convertedMakingCharge,
+        totalConvertedPrice,
         currency: symbol,
          originalPrice,
         discount,

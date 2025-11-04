@@ -2,12 +2,19 @@ import mongoose from "mongoose";
 
 const ornamentSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
+    name: { type: String, required: true }, // Product name
     rating: { type: Number, default: 0 },
     reviews: { type: Number, default: 0 },
 
-    // ✅ Aligns with your frontend main routes
-   category: {
+    // 🔹 Matches frontend: Gold, Diamond, Gemstone, Fashion
+    categoryType: {
+      type: String,
+      enum: ["Gold", "Diamond", "Gemstone", "Fashion"],
+      required: [true, "Category type is required"],
+    },
+
+    // 🔹 Matches frontend: rings, earrings, necklaces, bracelets, mens, loose-diamonds
+    category: {
       type: String,
       required: true,
       enum: [
@@ -20,7 +27,7 @@ const ornamentSchema = new mongoose.Schema(
       ],
     },
 
-    // ✅ Matches your getCategoryFromPath subcategories
+    // 🔹 Matches frontend: subCategory (lowercase)
     subCategory: {
       type: String,
       enum: [
@@ -42,56 +49,61 @@ const ornamentSchema = new mongoose.Schema(
         "mens bracelets",
         "cufflinks",
       ],
+      default: null,
     },
 
-    // ✅ Category Type (broader grouping)
-    categoryType: {
-      type: String,
-      enum: ["Gold", "Diamond", "Gemstone", "Fashion"],
-    },
-
-    gender: {
+    // 🔹 Matches frontend: type (same values as category)
+    type: {
       type: String,
       required: true,
+      enum: [
+        "rings",
+        "earrings",
+        "necklaces",
+        "bracelets",
+        "mens",
+        "loose-diamonds",
+      ],
+    },
+
+    // 🔹 Gender (exact from frontend)
+    gender: {
+      type: String,
       enum: ["Men", "Women", "Unisex"],
+      required: [true, "Gender is required"],
     },
 
     sku: { type: String, unique: true },
 
+    // 🔹 Measurements
     weight: { type: Number, required: true },
-    purity: { type: String },
+    purity: { type: String, default: "" },
 
+    // 🔹 Pricing
     price: { type: Number, required: true },
-    originalPrice: { type: Number },        
+    originalPrice: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
+    makingCharges: { type: Number, default: 0 },
+
+    // 🔹 Multi-currency support
     prices: {
-      type: Map,
-      of: new mongoose.Schema(
-        {
-          amount: { type: Number, required: true },
-          symbol: { type: String, required: true },
-        },
-        { _id: false }
-      ),
+      type: mongoose.Schema.Types.Mixed,
       default: {},
     },
 
-    makingCharges: { type: Number, default: 0 },
+    // 🔹 Country-specific making charges
+    makingChargesByCountry: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+
+    // 🔹 Details
     stoneDetails: { type: String, default: "" },
-    description: { type: String },
+    description: { type: String, default: "" },
     stock: { type: Number, default: 1 },
+    isFeatured: { type: Boolean, default: false },
 
-    coverImage: { type: String, trim: true },
-    images: { type: [String], default: [] },
-
-    model3D: { type: String, default: "" },
-    videoUrl: {
-  type: String,
-  default: null,
-},
-
-    
-
+    // 🔹 Material info
     metalType: {
       type: String,
       enum: [
@@ -101,7 +113,9 @@ const ornamentSchema = new mongoose.Schema(
         "Platinum",
         "Sterling Silver",
         "14K Yellow Gold",
+        "",
       ],
+      default: "",
     },
 
     stoneType: {
@@ -113,7 +127,9 @@ const ornamentSchema = new mongoose.Schema(
         "Lab-Grown Ruby",
         "Pearl",
         "None",
+        "",
       ],
+      default: "",
     },
 
     style: {
@@ -133,58 +149,56 @@ const ornamentSchema = new mongoose.Schema(
         "Signet",
         "Studs",
         "Bangles",
+        "",
       ],
+      default: "",
     },
 
-    size: { type: String },
-    color: { type: String },
+    size: { type: String, default: "" },
+    color: { type: String, default: "" },
 
+    // 🔹 Media
+    coverImage: { type: String, required: true },
+    images: { type: [String], default: [] },
+    model3D: { type: String, default: null },
+    videoUrl: { type: String, default: null },
+
+    // 🔹 Diamond details
+    diamondDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    sideDiamondDetails: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+
+    // 🔹 Linked product variants
     variantLinks: {
-      "Yellow Gold": { type: mongoose.Schema.Types.ObjectId, ref: "Ornament" },
-      "White Gold": { type: mongoose.Schema.Types.ObjectId, ref: "Ornament" },
-      "Rose Gold": { type: mongoose.Schema.Types.ObjectId, ref: "Ornament" },
-      Silver: { type: mongoose.Schema.Types.ObjectId, ref: "Ornament" },
-      Platinum: { type: mongoose.Schema.Types.ObjectId, ref: "Ornament" },
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
   },
   { timestamps: true }
 );
 
-// 🔹 Auto-generate SKU
+// 🔹 Auto-generate SKU before saving
 ornamentSchema.pre("save", async function (next) {
   if (!this.isNew) return next();
 
-  const catCode =
-    this.categoryType === "Gold"
-      ? "GLD"
-      : this.categoryType === "Diamond"
-      ? "DMND"
-      : this.categoryType === "Gemstone"
-      ? "GSTN"
-      : "FSHN";
-
+  const catCode = this.categoryType.substring(0, 2).toUpperCase(); // e.g. "GO", "DI"
   const genderCode = this.gender.substring(0, 1).toUpperCase();
- const typeCode = this.category.substring(0, 3).toUpperCase();
+  const typeCode = this.category.substring(0, 3).toUpperCase();
 
-// 🔹 FIXED SKU generator
-const prefix = `${catCode}-${genderCode}-${typeCode}-`;
+  const count = await mongoose.model("Ornament").countDocuments({
+    category: this.category,
+    gender: this.gender,
+  });
 
-const lastItem = await mongoose.model("Ornament").findOne({
-  sku: new RegExp(`^${prefix}`)
-}).sort({ createdAt: -1 });
-
-let nextNumber = 1;
-
-if (lastItem && lastItem.sku) {
-  const lastNum = parseInt(lastItem.sku.split("-").pop(), 10);
-  if (!isNaN(lastNum)) nextNumber = lastNum + 1;
-}
-
-this.sku = `${prefix}${String(nextNumber).padStart(3, "0")}`;
-
-
-
-  
+  this.sku = `${catCode}-${genderCode}-${typeCode}-${String(count + 1).padStart(
+    3,
+    "0"
+  )}`;
 
   next();
 });

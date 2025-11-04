@@ -101,6 +101,28 @@ export const getAnalyticsSummary = async (req, res) => {
       { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
     ]);
 
+    
+
+    // 🌍 Country-based visitor stats
+const countryStatsRaw = await TrackingLog.aggregate([
+  { 
+    $match: { 
+      event: "visit",
+      timestamp: { $gte: startDate },
+      country: { $exists: true, $ne: "" }
+    } 
+  },
+  { $group: { _id: "$country", visits: { $sum: 1 } } },
+  { $sort: { visits: -1 } },
+  { $limit: 10 },
+]);
+
+const countryStats = countryStatsRaw.map((c) => ({
+  country: c._id,
+  visits: c.visits,
+}));
+
+
     // Transform to { date, visits, purchases }
     const dailyStats = dailyStatsRaw.map((d) => {
       const dateKey = `${d._id.year}-${String(d._id.month).padStart(2, "0")}-${String(
@@ -121,6 +143,7 @@ export const getAnalyticsSummary = async (req, res) => {
         avgOrderValue,
         topProducts: topProductsMapped,
         dailyStats, // ✅ now included for line chart
+        countryStats, // ✅ included for country-wise stats
         range: `${days} days`,
       },
     });

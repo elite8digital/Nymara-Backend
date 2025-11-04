@@ -19,7 +19,7 @@ import bespokeRoutes from "./routes/bespoke.js";
 import corporateRoutes from "./routes/corporate.js";
 import appointments from "./routes/appointments.js";
 import chatRoutes from "./routes/chatRoutes.js";
-
+import trackingRoutes from "./routes/trackingRoutes.js";
 
 import bcrypt from "bcryptjs";
 
@@ -83,7 +83,7 @@ app.use("/api/bespoke", bespokeRoutes);
 app.use("/api/corporate", corporateRoutes);
 app.use("/api/appointments", appointments);
 app.use("/api/chat",chatRoutes);
-
+app.use("/api/tracking", trackingRoutes);
 
 
 
