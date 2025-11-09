@@ -20,6 +20,9 @@ import corporateRoutes from "./routes/corporate.js";
 import appointments from "./routes/appointments.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import trackingRoutes from "./routes/trackingRoutes.js";
+import  {geoMiddleware}  from "./middleware/geoMiddleware.js";
+import contactRoutes from "./routes//sizeRoutes.js";
+
 
 import bcrypt from "bcryptjs";
 
@@ -28,6 +31,9 @@ dotenv.config();
 
 const app = express();
 app.use(express.json());
+
+
+app.use(geoMiddleware);
 
 
 
@@ -84,6 +90,7 @@ app.use("/api/corporate", corporateRoutes);
 app.use("/api/appointments", appointments);
 app.use("/api/chat",chatRoutes);
 app.use("/api/tracking", trackingRoutes);
+app.use("/api/contact", contactRoutes);
 
 
 

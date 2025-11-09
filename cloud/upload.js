@@ -40,6 +40,19 @@ const storage = new CloudinaryStorage({
   },
 });
 
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedBase = ["coverImage", "images", "model3D", "videoFile"];
+    const isVariantField = /^variant\d+_(cover|images)$/.test(file.fieldname);
+
+    if (allowedBase.includes(file.fieldname) || isVariantField) {
+      cb(null, true);
+    } else {
+      cb(new multer.MulterError("LIMIT_UNEXPECTED_FILE", file.fieldname), false);
+    }
+  },
+});
+
 
 export default upload;

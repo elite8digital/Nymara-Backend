@@ -1,19 +1,32 @@
 import mongoose from "mongoose";
 
+// 🔹 Define embedded variant schema (no separate product IDs)
+const variantSchema = new mongoose.Schema(
+  {
+    color: { type: String, default: "" },
+    metalType: { type: String, default: "" },
+    size: { type: String, default: "" },
+    price: { type: Number, default: 0 },
+    coverImage: { type: String, default: null },
+    images: { type: [String], default: [] },
+    isDefault: { type: Boolean, default: false }, // helps frontend identify the main variant
+  },
+  { _id: false } // prevents auto-creating _id for each variant
+);
+
 const ornamentSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true }, // Product name
+    // 🔸 Basic Details
+    name: { type: String, required: true },
     rating: { type: Number, default: 0 },
     reviews: { type: Number, default: 0 },
 
-    // 🔹 Matches frontend: Gold, Diamond, Gemstone, Fashion
+    // 🔸 Categorization
     categoryType: {
       type: String,
       enum: ["Gold", "Diamond", "Gemstone", "Fashion"],
       required: [true, "Category type is required"],
     },
-
-    // 🔹 Matches frontend: rings, earrings, necklaces, bracelets, mens, loose-diamonds
     category: {
       type: String,
       required: true,
@@ -26,8 +39,6 @@ const ornamentSchema = new mongoose.Schema(
         "loose-diamonds",
       ],
     },
-
-    // 🔹 Matches frontend: subCategory (lowercase)
     subCategory: {
       type: String,
       enum: [
@@ -51,8 +62,6 @@ const ornamentSchema = new mongoose.Schema(
       ],
       default: null,
     },
-
-    // 🔹 Matches frontend: type (same values as category)
     type: {
       type: String,
       required: true,
@@ -65,45 +74,30 @@ const ornamentSchema = new mongoose.Schema(
         "loose-diamonds",
       ],
     },
-
-    // 🔹 Gender (exact from frontend)
     gender: {
       type: String,
       enum: ["Men", "Women", "Unisex"],
       required: [true, "Gender is required"],
     },
 
-    sku: { type: String, unique: true },
+    // 🔸 Identification
+    sku: { type: String, unique: true, index: true },
 
-    // 🔹 Measurements
+    // 🔸 Pricing and Attributes
     weight: { type: Number, required: true },
     purity: { type: String, default: "" },
-
-    // 🔹 Pricing
     price: { type: Number, required: true },
     originalPrice: { type: Number, default: 0 },
     discount: { type: Number, default: 0 },
     makingCharges: { type: Number, default: 0 },
+    prices: { type: mongoose.Schema.Types.Mixed, default: {} },
+    makingChargesByCountry: { type: mongoose.Schema.Types.Mixed, default: {} },
 
-    // 🔹 Multi-currency support
-    prices: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
-
-    // 🔹 Country-specific making charges
-    makingChargesByCountry: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
-
-    // 🔹 Details
+    // 🔸 Stone and Metal Info
     stoneDetails: { type: String, default: "" },
     description: { type: String, default: "" },
     stock: { type: Number, default: 1 },
     isFeatured: { type: Boolean, default: false },
-
-    // 🔹 Material info
     metalType: {
       type: String,
       enum: [
@@ -117,7 +111,6 @@ const ornamentSchema = new mongoose.Schema(
       ],
       default: "",
     },
-
     stoneType: {
       type: String,
       enum: [
@@ -131,7 +124,6 @@ const ornamentSchema = new mongoose.Schema(
       ],
       default: "",
     },
-
     style: {
       type: String,
       enum: [
@@ -153,42 +145,38 @@ const ornamentSchema = new mongoose.Schema(
       ],
       default: "",
     },
-
     size: { type: String, default: "" },
     color: { type: String, default: "" },
 
-    // 🔹 Media
+    // 🔸 Media
     coverImage: { type: String, required: true },
     images: { type: [String], default: [] },
     model3D: { type: String, default: null },
     videoUrl: { type: String, default: null },
 
-    // 🔹 Diamond details
-    diamondDetails: {
-      type: mongoose.Schema.Types.Mixed,
-      default: null,
-    },
-    sideDiamondDetails: {
-      type: mongoose.Schema.Types.Mixed,
-      default: null,
-    },
+    // 🔸 Diamond / Gemstone Details
+    diamondDetails: { type: mongoose.Schema.Types.Mixed, default: null },
+    sideDiamondDetails: { type: mongoose.Schema.Types.Mixed, default: null },
 
-    // 🔹 Linked product variants
-    variantLinks: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
-    },
+    // 🔸 Variant Data (embedded)
+    variants: [variantSchema], // ✅ all variants live inside the same product
+
+    // 🔸 Misc
+    variantLinks: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: true }
 );
 
-// 🔹 Auto-generate SKU before saving
+// 🔹 Index for faster queries
+ornamentSchema.index({ category: 1, gender: 1, isFeatured: 1 });
+
+// 🔹 Auto-generate SKU
 ornamentSchema.pre("save", async function (next) {
   if (!this.isNew) return next();
 
-  const catCode = this.categoryType.substring(0, 2).toUpperCase(); // e.g. "GO", "DI"
-  const genderCode = this.gender.substring(0, 1).toUpperCase();
-  const typeCode = this.category.substring(0, 3).toUpperCase();
+  const catCode = this.categoryType?.substring(0, 2)?.toUpperCase() || "XX";
+  const genderCode = this.gender?.substring(0, 1)?.toUpperCase() || "U";
+  const typeCode = this.category?.substring(0, 3)?.toUpperCase() || "GEN";
 
   const count = await mongoose.model("Ornament").countDocuments({
     category: this.category,

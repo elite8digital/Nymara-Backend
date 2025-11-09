@@ -188,19 +188,23 @@ const ornaments = await Ornament.find(filter).sort(sortOption);
     
 
 /**
+/**
  * 🔹 Get single ornament details (public route)
  */
 router.get("/ornaments/:id", async (req, res) => {
   try {
     const { currency = "INR" } = req.query;
+    const curr = currency.toUpperCase();
 
+    // ✅ Validate ID
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
       return res
         .status(400)
         .json({ success: false, message: "Invalid ornament ID" });
     }
 
-    const ornament = await Ornament.findById(req.params.id);
+    // ✅ Fetch ornament (no populate since variants are embedded)
+    const ornament = await Ornament.findById(req.params.id).lean();
 
     if (!ornament) {
       return res
@@ -208,44 +212,49 @@ router.get("/ornaments/:id", async (req, res) => {
         .json({ success: false, message: "Ornament not found" });
     }
 
+    // 💰 Price Conversion Logic
     let convertedPrice = ornament.price;
     let symbol = "₹";
 
-    // ✅ First check if product has predefined prices
-    if (ornament.prices && ornament.prices[currency]) {
-      convertedPrice = ornament.prices[currency].amount;
-      symbol = ornament.prices[currency].symbol;
-    } 
-    // ✅ Otherwise fallback to dynamic conversion
-    else if (currencyRates[currency.toUpperCase()]) {
+    if (ornament.prices && ornament.prices[curr]) {
+      // Predefined price
+      convertedPrice = ornament.prices[curr].amount;
+      symbol = ornament.prices[curr].symbol;
+    } else if (curr !== "INR" && currencyRates[curr]) {
+      // Convert dynamically
       convertedPrice = ornament.price
-        ? Number((ornament.price * currencyRates[currency.toUpperCase()].rate).toFixed(2))
+        ? Number((ornament.price * currencyRates[curr].rate).toFixed(2))
         : null;
-      symbol = currencyRates[currency.toUpperCase()].symbol;
+      symbol = currencyRates[curr].symbol;
     }
 
-     let convertedMakingCharge = ornament.makingCharges || 0;
+    // 💎 Making Charges Conversion
+    let convertedMakingCharge = ornament.makingCharges || 0;
 
-    if (ornament.makingChargesByCountry && ornament.makingChargesByCountry[currency]) {
-      // ✅ Use predefined making charge if exists
-      convertedMakingCharge = ornament.makingChargesByCountry[currency].amount;
-    } else if (currencyRates[currency]) {
-      // ✅ Convert dynamically
+    if (
+      ornament.makingChargesByCountry &&
+      ornament.makingChargesByCountry[curr]
+    ) {
+      convertedMakingCharge = ornament.makingChargesByCountry[curr].amount;
+    } else if (currencyRates[curr]) {
       convertedMakingCharge = Number(
-        ((ornament.makingCharges || 0) * currencyRates[currency].rate).toFixed(2)
+        ((ornament.makingCharges || 0) * currencyRates[curr].rate).toFixed(2)
       );
     }
 
+    // 🧠 Diamond/Gemstone/Fashion Product Details
     const diamondInfo =
-      ornament.categoryType === "Diamond"
+      ["Diamond", "Gemstone", "Fashion"].includes(ornament.categoryType)
         ? {
             diamondDetails: ornament.diamondDetails || null,
             sideDiamondDetails: ornament.sideDiamondDetails || null,
           }
         : {};
 
-      const price = ornament.price || 0;
+    // 🧮 Discount and Original Price
+    const price = ornament.price || 0;
     const originalPrice = ornament.originalPrice || price;
+
     const discount =
       ornament.discount ||
       Math.round(((originalPrice - price) / originalPrice) * 100) ||
@@ -255,23 +264,47 @@ router.get("/ornaments/:id", async (req, res) => {
       (convertedPrice + convertedMakingCharge).toFixed(2)
     );
 
+    // 🖼 Determine Display Images
+    // If product has variants, prefer the default variant or the first variant’s images
+    let displayCoverImage = ornament.coverImage || null;
+    let displayImages =
+      (ornament.images && ornament.images.length > 0 ? ornament.images : []) ||
+      [];
+
+    if (ornament.variants && ornament.variants.length > 0) {
+      const defaultVariant =
+        ornament.variants.find((v) => v.isDefault) || ornament.variants[0];
+
+      if (defaultVariant) {
+        displayCoverImage =
+          defaultVariant.coverImage || ornament.coverImage || null;
+        if (defaultVariant.images?.length > 0) {
+          displayImages = defaultVariant.images;
+        }
+      }
+    }
+
+    // ✅ Final response
     res.json({
       success: true,
-      count: 1,
       ornament: {
-        ...ornament.toObject(),
+        ...ornament,
         ...diamondInfo,
+        displayCoverImage,
+        displayImages,
         priceInINR: ornament.price,
         convertedPrice,
         convertedMakingCharge,
         totalConvertedPrice,
         currency: symbol,
-         originalPrice,
+        originalPrice,
         discount,
-        prices: ornament.prices || {}, // send full map too
+        model3D: ornament.model3D || null,
+        variants: ornament.variants || [],
       },
     });
   } catch (error) {
+    console.error("❌ Get Ornament Error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch ornament",

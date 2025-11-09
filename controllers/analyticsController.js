@@ -101,8 +101,6 @@ export const getAnalyticsSummary = async (req, res) => {
       { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
     ]);
 
-    
-
     // 🌍 Country-based visitor stats
 const countryStatsRaw = await TrackingLog.aggregate([
   { 
