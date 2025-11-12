@@ -44,7 +44,7 @@ const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
     const allowedBase = ["coverImage", "images", "model3D", "videoFile"];
-    const isVariantField = /^variant\d+_(cover|images)$/.test(file.fieldname);
+    const isVariantField = /^variant\d+_(cover|images|video|model3D)$/.test(file.fieldname);
 
     if (allowedBase.includes(file.fieldname) || isVariantField) {
       cb(null, true);

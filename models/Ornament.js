@@ -9,6 +9,7 @@ const variantSchema = new mongoose.Schema(
     price: { type: Number, default: 0 },
     coverImage: { type: String, default: null },
     images: { type: [String], default: [] },
+     videoUrl: { type: String, default: null },
     isDefault: { type: Boolean, default: false }, // helps frontend identify the main variant
   },
   { _id: false } // prevents auto-creating _id for each variant

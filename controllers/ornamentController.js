@@ -1,58 +1,59 @@
 // controllers/ornamentController.js
 import Ornament from "../models/Ornament.js";
-import upload from "../cloud/upload.js"; 
+import upload from "../cloud/upload.js";
 import { currencyRates } from "../config/currencyRates.js";
 import util from "util";
 
-// Middleware to handle uploads (1 coverImage + multiple images)
+// Middleware to handle uploads (base + variant media)
 export const uploadOrnamentImages = upload.fields([
   { name: "coverImage", maxCount: 1 },
   { name: "images", maxCount: 5 },
   { name: "model3D", maxCount: 1 },
-  { name: "videoFile", maxCount: 1 }, 
-    { name: "variantCoverImage", maxCount: 1 },
+  { name: "videoFile", maxCount: 1 },
+  { name: "variantCoverImage", maxCount: 1 },
   { name: "variantImages", maxCount: 5 },
+  { name: "variantVideo", maxCount: 1 }, // 🆕 optional if variants are uploaded one-by-one
 ]);
 
 // ✅ Add Ornament
-// ✅ Add Ornament
-
-
 export const addOrnament = async (req, res) => {
   try {
     console.log("🧩 Incoming Ornament Request:");
     console.log("BODY:\n", JSON.stringify(req.body, null, 2));
     console.log("FILES:\n", util.inspect(req.files, { depth: null, colors: true }));
 
-    // ✅ Base product media
-   // 🟢 Handle uploads dynamically (works with upload.any())
-let coverImage = null;
-let images = [];
-let model3D = null;
-let videoUrl = null;
-let variantFiles = {};
+    // 🟢 Handle uploads dynamically
+    let coverImage = null;
+    let images = [];
+    let model3D = null;
+    let videoUrl = null;
+    let variantFiles = {};
 
-if (Array.isArray(req.files)) {
-  for (const file of req.files) {
-    if (file.fieldname === "coverImage") {
-      coverImage = file.path;
-    } else if (file.fieldname === "images") {
-      images.push(file.path);
-    } else if (file.fieldname === "model3D") {
-      model3D = file.path;
-    } else if (file.fieldname === "videoFile") {
-      videoUrl = file.path;
-    } else if (/^variant\d+_(cover|images)$/.test(file.fieldname)) {
-      const match = file.fieldname.match(/^variant(\d+)_(cover|images)$/);
-      const variantIndex = match[1];
-      const type = match[2];
-      if (!variantFiles[variantIndex]) variantFiles[variantIndex] = { images: [] };
-      if (type === "cover") variantFiles[variantIndex].coverImage = file.path;
-      else variantFiles[variantIndex].images.push(file.path);
+    // 🧩 Check if using upload.any()
+    if (Array.isArray(req.files)) {
+      for (const file of req.files) {
+        if (file.fieldname === "coverImage") {
+          coverImage = file.path;
+        } else if (file.fieldname === "images") {
+          images.push(file.path);
+        } else if (file.fieldname === "model3D") {
+          model3D = file.path;
+        } else if (file.fieldname === "videoFile") {
+          videoUrl = file.path;
+
+        // 🆕 Detect variant uploads (cover, images, or video)
+        } else if (/^variant\d+_(cover|images|video)$/.test(file.fieldname)) {
+          const match = file.fieldname.match(/^variant(\d+)_(cover|images|video)$/);
+          const variantIndex = match[1];
+          const type = match[2];
+          if (!variantFiles[variantIndex]) variantFiles[variantIndex] = { images: [] };
+
+          if (type === "cover") variantFiles[variantIndex].coverImage = file.path;
+          else if (type === "images") variantFiles[variantIndex].images.push(file.path);
+          else if (type === "video") variantFiles[variantIndex].videoUrl = file.path; // 🆕 video added
+        }
+      }
     }
-  }
-}
-
 
     // ✅ Category logic
     const category = Array.isArray(req.body.category)
@@ -101,17 +102,16 @@ if (Array.isArray(req.files)) {
       });
     }
 
-    // ✅ Attach images for each variant (dynamic handling)
-       // 🧩 Merge uploaded variant files with variant info
-if (Array.isArray(variants) && variants.length > 0) {
-  variants.forEach((v, i) => {
-    if (variantFiles[i]) {
-      v.coverImage = variantFiles[i].coverImage || null;
-      v.images = variantFiles[i].images || [];
+    // 🧩 Merge uploaded variant files with variant info
+    if (Array.isArray(variants) && variants.length > 0) {
+      variants.forEach((v, i) => {
+        if (variantFiles[i]) {
+          v.coverImage = variantFiles[i].coverImage || null;
+          v.images = variantFiles[i].images || [];
+          v.videoUrl = variantFiles[i].videoUrl || null; // 🆕 include MP4 per variant
+        }
+      });
     }
-  });
-}
-
 
     // ✅ Create final object
     const ornamentData = {
@@ -132,7 +132,7 @@ if (Array.isArray(variants) && variants.length > 0) {
       variantLinks,
       model3D,
       videoUrl,
-      variants, // ✅ embedded array with its own images
+      variants, // ✅ now includes coverImage, images[], videoUrl
     };
 
     const ornament = await Ornament.create(ornamentData);
