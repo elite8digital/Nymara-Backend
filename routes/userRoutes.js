@@ -105,7 +105,7 @@ router.get("/ornaments", async (req, res) => {
     }
 
     // 🔹 Search filter (across multiple fields)
-    if (search) {
+ if (search && search.trim() !== "") {
       const searchRegex = new RegExp(search, "i");
       const searchConditions = [
         { name: searchRegex },
@@ -422,3 +422,4 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
