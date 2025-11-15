@@ -179,15 +179,23 @@ ornamentSchema.pre("save", async function (next) {
   const genderCode = this.gender?.substring(0, 1)?.toUpperCase() || "U";
   const typeCode = this.category?.substring(0, 3)?.toUpperCase() || "GEN";
 
-  const count = await mongoose.model("Ornament").countDocuments({
-    category: this.category,
-    gender: this.gender,
-  });
+  // Find the last SKU with the same prefix
+  const prefix = `${catCode}-${genderCode}-${typeCode}-`;
 
-  this.sku = `${catCode}-${genderCode}-${typeCode}-${String(count + 1).padStart(
-    3,
-    "0"
-  )}`;
+  const lastProduct = await mongoose
+    .model("Ornament")
+    .findOne({ sku: new RegExp(`^${prefix}`) })
+    .sort({ sku: -1 });
+
+  let nextNumber = 1;
+
+  if (lastProduct?.sku) {
+    const parts = lastProduct.sku.split("-");
+    const lastNum = parseInt(parts[3], 10);
+    if (!isNaN(lastNum)) nextNumber = lastNum + 1;
+  }
+
+  this.sku = `${prefix}${String(nextNumber).padStart(3, "0")}`;
 
   next();
 });
