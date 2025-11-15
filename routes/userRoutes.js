@@ -65,7 +65,10 @@ router.get("/ornaments", async (req, res) => {
     }
 
     // 🔹 Type filter
-    if (type) filter.type = new RegExp(type, "i");
+  if (type) {
+  const types = Array.isArray(type) ? type : type.split(",");
+  filter.type = { $in: types.map(t => new RegExp(`^${t.trim()}$`, "i")) };
+}
 
     // 🔹 Metal type filter
     if (metalType) {
@@ -422,4 +425,5 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
