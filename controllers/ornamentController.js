@@ -2073,6 +2073,25 @@ export const updateOrnament = async (req, res) => {
 
     const body = req.body;
 
+    const NORMALIZE_METAL = (metal) => {
+  if (!metal) return {};
+
+  const NON_GOLD_METALS = [
+    "Platinum",
+    "925 Sterling Silver",
+ 
+    "Gold Vermeil"
+  ];
+
+  // If metal is non-gold → remove purity so backend doesn't calculate gold rate
+  if (NON_GOLD_METALS.includes(metal.metalType)) {
+    metal.purity = null;
+  }
+
+  return metal;
+};
+
+
     console.log("===== BACKEND RAW REQ.BODY =====");
     Object.entries(body).forEach(([k, v]) => {
       console.log(`${k}:`, v, "| type:", typeof v);
@@ -2142,9 +2161,16 @@ export const updateOrnament = async (req, res) => {
     ===================================================== */
 
     // METAL
+    // if (body.metal) {
+    //   updateOps.$set.metal = parseJSON(body.metal, existing.metal);
+    // }
+
     if (body.metal) {
-      updateOps.$set.metal = parseJSON(body.metal, existing.metal);
-    }
+  let parsedMetal = parseJSON(body.metal, existing.metal);
+  parsedMetal = NORMALIZE_METAL(parsedMetal);
+  updateOps.$set.metal = parsedMetal;
+}
+
 
     // MAIN diamond
     if (body.diamondDetails) {
@@ -2219,9 +2245,15 @@ export const updateOrnament = async (req, res) => {
         }
       });
 
-      if (body.metal) {
-        updateOps.$set.metal = parseJSON(body.metal, existing.metal);
-      }
+      // if (body.metal) {
+      //   updateOps.$set.metal = parseJSON(body.metal, existing.metal);
+      // }
+
+       if (body.metal) {
+    let parsedMetal = parseJSON(body.metal, existing.metal);
+    parsedMetal = NORMALIZE_METAL(parsedMetal);
+    updateOps.$set.metal = parsedMetal;
+  }
 
       if (body.stones) {
         updateOps.$set.stones = parseJSON(body.stones, existing.stones);
@@ -2362,4 +2394,5 @@ export const deleteOrnament = async (req, res) => {
     res.status(500).json({ message: "Failed to delete ornament", error: err.message });
   }
 };
+
 
