@@ -81,15 +81,15 @@ const safeJSON = (value, fallback) => {
 };
 
 /* ===========================================================================
-   ⭐ FULLY FIXED — ADD ORNAMENT CONTROLLER
+   ADD ORNAMENT CONTROLLER
 =========================================================================== */
 export const addOrnament = async (req, res) => {
   try {
     console.log("\n==============================");
-    console.log("📥 NEW PRODUCT REQUEST");
+    console.log(" NEW PRODUCT REQUEST");
     console.log("==============================");
-    console.log("📌 BODY:", req.body);
-    console.log("📌 RAW FILES:", util.inspect(req.files, { depth: null }));
+    console.log(" BODY:", req.body);
+    console.log(" RAW FILES:", util.inspect(req.files, { depth: null }));
 
     /* --------------------------------------------------------
        FIX: Convert req.files array → grouped object
@@ -104,7 +104,7 @@ export const addOrnament = async (req, res) => {
       req.files = grouped;
     }
 
-    console.log("📁 FILES (ORGANIZED):", util.inspect(req.files, { depth: null }));
+    console.log(" FILES (ORGANIZED):", util.inspect(req.files, { depth: null }));
 
     /* -----------------------------------------
        Extract media (after fix)
@@ -114,7 +114,7 @@ export const addOrnament = async (req, res) => {
     const model3D = req.files?.model3D?.[0]?.path || null;
     const videoUrl = req.files?.videoFile?.[0]?.path || null;
 
-    console.log("📸 MAIN MEDIA:", { coverImage, images, model3D, videoUrl });
+    console.log(" MAIN MEDIA:", { coverImage, images, model3D, videoUrl });
 
     /* -----------------------------------------
        Parse all dynamic fields
@@ -151,7 +151,7 @@ export const addOrnament = async (req, res) => {
 
     const pricing = await Pricing.findOne();
 
-    // ⭐ FIX: Normalize diamondDetails
+    //  FIX: Normalize diamondDetails
     const normalizedDiamond = {
       carat: Number(diamondDetails.carat || 0),
       count: Number(diamondDetails.count || 0),
@@ -162,7 +162,7 @@ export const addOrnament = async (req, res) => {
       useAuto: diamondDetails.useAuto !== false,
     };
 
-    // ⭐ FIX: Normalize sideDiamondDetails
+    //  FIX: Normalize sideDiamondDetails
     const normalizedSideDiamonds = (Array.isArray(sideDiamondDetails) ? sideDiamondDetails : []).map(sd => ({
       carat: Number(sd.carat || 0),
       count: Number(sd.count || 0),
@@ -175,14 +175,14 @@ export const addOrnament = async (req, res) => {
 
 
 
-    // // 1️⃣ GOLD PRICE
+    // // 1️ GOLD PRICE
     // let goldRate = 0;
 
 
     // const metalData = metal || {};
 
 
-    // // ⭐ FIX: Safe purity extraction
+    // //  FIX: Safe purity extraction
     // const extractPurity = (value) => {
     //   if (!value) return null;
     //   const match = value.toUpperCase().match(/(\d+K)/);
@@ -204,7 +204,7 @@ export const addOrnament = async (req, res) => {
 
     // const goldTotal = Number(metalData.weight || 0) * goldRate;
 
-    // 1️⃣ METAL PRICE (GOLD / PLATINUM / SILVER / VERMEIL)
+    // 1️ METAL PRICE (GOLD / PLATINUM / SILVER / VERMEIL)
     let metalRate = 0;
     const metalData = metal || {};
 
@@ -254,7 +254,7 @@ export const addOrnament = async (req, res) => {
 
 
 
-    // ⭐ Use normalized objects for price calculation
+    //  Use normalized objects for price calculation
 
     // NEW: Manual diamond totals from client
     const manualMainDiamondTotal = Number(req.body.mainDiamondTotal || 0);
@@ -281,8 +281,8 @@ export const addOrnament = async (req, res) => {
 
 
 
-    // 4️⃣ STONES
-    // 4️⃣ GEMSTONES (AUTO PRICE USING NORMALIZED GEMSTONES)
+    // 4️ STONES
+    // 4️GEMSTONES (AUTO PRICE USING NORMALIZED GEMSTONES)
     let gemstonesTotal = 0;
 
     normalizedGemstones.forEach((st) => {
@@ -307,7 +307,7 @@ export const addOrnament = async (req, res) => {
     const making = Number(req.body.makingCharges || 0);
 
 
-    // 6️⃣ FINAL PRICE
+    // 6️ FINAL PRICE
     const autoPrice =
       goldTotal +
       mainTotal +
@@ -389,7 +389,7 @@ export const addOrnament = async (req, res) => {
       size: req.body.size || "",
     });
 
-    console.log("🟢 PRODUCT CREATED:", product);
+    console.log(" PRODUCT CREATED:", product);
 
     return res.status(201).json({
       success: true,
@@ -398,7 +398,7 @@ export const addOrnament = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("❌ ADD PRODUCT ERROR:", err);
+    console.error(" ADD PRODUCT ERROR:", err);
     return res.status(500).json({
       success: false,
       message: "Failed to create product",
@@ -411,7 +411,7 @@ export const addOrnament = async (req, res) => {
 
 
 
-// ✅ Get All Ornaments (with filters)
+// Get All Ornaments (with filters)
 // export const getOrnaments = async (req, res) => {
 //   try {
 //     const {
@@ -459,7 +459,7 @@ export const addOrnament = async (req, res) => {
 
 //     if (type) filter.type = type;
 
-//     // 🔥 Price filter must fallback to INR if foreign currency doesn't exist
+//     //  Price filter must fallback to INR if foreign currency doesn't exist
 //     if (minPrice || maxPrice) {
 //       filter.$or = [
 //         { [`prices.${curr}.amount`]: {} },
@@ -620,7 +620,7 @@ export const addOrnament = async (req, res) => {
 //       ornaments: transformed,
 //     });
 //   } catch (err) {
-//     console.error("❌ Get Ornaments Error:", err);
+//     console.error(" Get Ornaments Error:", err);
 //     res.status(500).json({
 //       success: false,
 //       message: "Failed to fetch ornaments",
@@ -629,7 +629,7 @@ export const addOrnament = async (req, res) => {
 //   }
 // };
 
-// ✅ Get All Ornaments (with filters)
+//  Get All Ornaments (with filters)
 // export const getOrnaments = async (req, res) => {
 //   try {
 //     const {
@@ -703,7 +703,7 @@ export const addOrnament = async (req, res) => {
 //     }
 
 //     /* =====================================================
-//        2. SORTING — ⭐ MOVED UP (IMPORTANT FIX)
+//        2. SORTING —  MOVED UP (IMPORTANT FIX)
 //     ====================================================== */
 //     let sortOption = { createdAt: -1 };
 
@@ -756,7 +756,7 @@ export const addOrnament = async (req, res) => {
 
 //   let metalINR = 0;
 
-//   // 1️⃣ GOLD — 14K / 18K / 22K
+//   // 1️GOLD — 14K / 18K / 22K
 //   if (purity) {
 //     const gp =
 //       pricing.goldPrices?.get?.(purity) ??
@@ -764,17 +764,17 @@ export const addOrnament = async (req, res) => {
 //     metalINR = weight * Number(gp || 0);
 //   }
 
-//   // 2️⃣ PLATINUM
+//   // 2️ PLATINUM
 //   else if (metal.metalType === "Platinum") {
 //     metalINR = weight * Number(pricing.platinumPricePerGram || 0);
 //   }
 
-//   // 3️⃣ SILVER
+//   // 3️ SILVER
 //   else if (metal.metalType === "925 Sterling Silver") {
 //     metalINR = weight * Number(pricing.silver925PricePerGram || 0);
 //   }
 
-//   // 4️⃣ GOLD VERMEIL
+//   // 4️ GOLD VERMEIL
 //   else if (metal.metalType === "Gold Vermeil") {
 //     if (pricing.goldVermeilPricePerGram > 0) {
 //       metalINR = weight * Number(pricing.goldVermeilPricePerGram);
@@ -902,7 +902,7 @@ export const addOrnament = async (req, res) => {
 //       ornaments: transformed,
 //     });
 //   } catch (err) {
-//     console.error("❌ Get Ornaments Error:", err);
+//     console.error(" Get Ornaments Error:", err);
 //     res.status(500).json({
 //       success: false,
 //       message: "Failed to fetch ornaments",
@@ -931,7 +931,7 @@ export const getOrnaments = async (req, res) => {
     const curr = currency.toUpperCase();
     const skip = (Number(page) - 1) * Number(limit);
 
-    /* ⭐ FIX 1 — Add missing currencyRates */
+    /*  Add missing currencyRates */
     const currencyRates = {
       INR: { rate: 1, symbol: "₹" },
       USD: { rate: 0.012, symbol: "$" },
@@ -1124,7 +1124,7 @@ export const getOrnaments = async (req, res) => {
 
         let startingPrice = null;
 
-        let currencySymbol = currencyRates[curr].symbol;  // ⭐ FIX moved
+        let currencySymbol = currencyRates[curr].symbol;  
 
         productVariants.forEach((v) => {
           const totals = computeTotals(v);
@@ -1156,15 +1156,15 @@ export const getOrnaments = async (req, res) => {
          VARIANT PRODUCT
       -------------------------- */
 
-      // ⭐ FIX 3 — Replace old broken price logic
+     
       const totals = computeTotals(orn);
       const rate = currencyRates[curr].rate;
 
       const convertedBase = totals.basePrice * rate;
       const convertedMaking = Number(orn.makingCharges || 0) * rate;
 
-      const price = convertedBase + convertedMaking;  // ⭐ FIXED
-      const currencySymbol = currencyRates[curr].symbol; // ⭐ FIXED
+      const price = convertedBase + convertedMaking;  
+      const currencySymbol = currencyRates[curr].symbol; 
 
       const originalPrice = orn.originalPrice || price;
       const discount = Math.round(((originalPrice - price) / originalPrice) * 100);
@@ -1194,7 +1194,7 @@ export const getOrnaments = async (req, res) => {
       ornaments: transformed,
     });
   } catch (err) {
-    console.error("❌ Get Ornaments Error:", err);
+    console.error(" Get Ornaments Error:", err);
     res.status(500).json({
       success: false,
       message: "Failed to fetch ornaments",
@@ -1235,18 +1235,16 @@ export const getOrnamentById = async (req, res) => {
     ------------------------------------------- */
     let ornament = await Ornament.findById(id).lean();
 
-    /* -----------------------------------------------------------
-   ⭐ PATCH: Normalize Metal, Main Diamond, Side Diamonds, Stones
------------------------------------------------------------- */
+   
 
-    // ⭐ Normalize metal
+    //  Normalize metal
     ornament.metal = {
       weight: Number(ornament.metal?.weight || 0),
       purity: ornament.metal?.purity || "",
       metalType: ornament.metal?.metalType || "",
     };
 
-    // ⭐ Normalize main diamond details
+    // Normalize main diamond details
     let diamond = ornament.diamondDetails || null;
 
     if (diamond) {
@@ -1273,7 +1271,7 @@ export const getOrnamentById = async (req, res) => {
 
     ornament.diamondDetails = diamond;
 
-    // ⭐ Normalize side diamonds array
+    // Normalize side diamonds array
     let side = Array.isArray(ornament.sideDiamondDetails)
       ? ornament.sideDiamondDetails
       : [];
@@ -1290,7 +1288,7 @@ export const getOrnamentById = async (req, res) => {
 
     ornament.sideDiamondDetails = side;
 
-    // ⭐ Normalize stones (gemstones)
+    //  Normalize stones (gemstones)
 
     if (!Array.isArray(ornament.gemstoneDetails)) {
       ornament.gemstoneDetails = [];
@@ -1395,7 +1393,7 @@ export const getOrnamentById = async (req, res) => {
 
      let metalINR = 0;
 
-// 1️⃣ GOLD TYPES (14K / 18K / 22K)
+// 1️ GOLD TYPES (14K / 18K / 22K)
 if (purity) {
   const gp =
     pricing.goldPrices.get?.(purity) ??
@@ -1404,17 +1402,17 @@ if (purity) {
   metalINR = weight * Number(gp || 0);
 }
 
-// 2️⃣ PLATINUM
+// 2️ PLATINUM
 else if (metal.metalType === "Platinum") {
   metalINR = weight * Number(pricing.platinumPricePerGram || 0);
 }
 
-// 3️⃣ 925 STERLING SILVER
+// 3️ 925 STERLING SILVER
 else if (metal.metalType === "925 Sterling Silver") {
   metalINR = weight * Number(pricing.silver925PricePerGram || 0);
 }
 
-// 4️⃣ GOLD VERMEIL
+// 4️ GOLD VERMEIL
 else if (metal.metalType === "Gold Vermeil") {
   if (pricing.goldVermeilPricePerGram > 0) {
     metalINR = weight * Number(pricing.goldVermeilPricePerGram);
@@ -1588,7 +1586,7 @@ else if (metal.metalType === "Gold Vermeil") {
 
 
 
-    // 🔥 Attach totals to main product
+    //  Attach totals to main product
     ornament = { ...ornament, ...computeTotals(ornament) };
 
 
@@ -1688,7 +1686,7 @@ else if (metal.metalType === "Gold Vermeil") {
     });
 
   } catch (err) {
-    console.error("❌ getOrnamentById Error:", err);
+    console.error(" getOrnamentById Error:", err);
     return res.status(500).json({
       success: false,
       message: "Error fetching ornament",
@@ -1701,7 +1699,7 @@ else if (metal.metalType === "Gold Vermeil") {
 
 
 // =======================================
-// 🔵 GET MAIN PRODUCT (with variant summaries)
+//  GET MAIN PRODUCT (with variant summaries)
 // =======================================
 export const getMainProduct = async (req, res) => {
   try {
@@ -1770,14 +1768,14 @@ export const getMainProduct = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error("❌ getMainProduct Error:", err);
+    console.error("getMainProduct Error:", err);
     res.status(500).json({ success: false, message: err.message });
   }
 };
 
 
 // =======================================
-// 🔴 GET VARIANT PRODUCT (full details)
+//  GET VARIANT PRODUCT (full details)
 // =======================================
 export const getVariantProduct = async (req, res) => {
   try {
@@ -1855,7 +1853,7 @@ export const getVariantProduct = async (req, res) => {
 
 
 
-// // ✅ Update Ornament
+// //  Update Ornament
 // export const updateOrnament = async (req, res) => {
 //   try {
 //     const ornamentId = req.params.id;
@@ -2042,7 +2040,7 @@ export const getVariantProduct = async (req, res) => {
 //   }
 // };
 
-// ✅ Update Ornament
+//  Update Ornament
 export const updateOrnament = async (req, res) => {
   try {
     const ornamentId = req.params.id;
@@ -2383,7 +2381,7 @@ export const updateOrnament = async (req, res) => {
 
 
 
-// ✅ Delete Ornament
+//  Delete Ornament
 export const deleteOrnament = async (req, res) => {
   try {
     const ornament = await Ornament.findByIdAndDelete(req.params.id);
@@ -2394,5 +2392,6 @@ export const deleteOrnament = async (req, res) => {
     res.status(500).json({ message: "Failed to delete ornament", error: err.message });
   }
 };
+
 
 
