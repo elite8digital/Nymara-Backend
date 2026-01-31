@@ -2306,34 +2306,69 @@ export const updateOrnament = async (req, res) => {
 
 
     /* =====================================================
-       STEP 7 — MEDIA (fix push/pull)
+       STEP 7 — MEDIA (unified cover + gallery reordering)
     ===================================================== */
 
-    // Cover
-    if (req.files?.coverImage?.[0]) {
-      updateOps.$set.coverImage = req.files.coverImage[0].path;
-    }
-
-    // Gallery replace
-    if (req.files?.images?.length) {
-      updateOps.$set.images = req.files.images.map((f) => f.path);
-    }
-
-    // ADD images (array)
-    if (body.addImage) {
-      const arr = parseJSON(body.addImage, []);
-      if (arr.length) {
-        updateOps.$push = updateOps.$push || {};
-        updateOps.$push.images = { $each: arr };
+    // Handle unified image reordering (cover + gallery as one list)
+    if (body.reorderAllImages) {
+      const orderedImages = parseJSON(body.reorderAllImages, []);
+      if (Array.isArray(orderedImages) && orderedImages.length > 0) {
+        // Validate that all URLs exist in current images to prevent injection
+        const currentAllImages = [existing.coverImage, ...(existing.images || [])].filter(Boolean);
+        const validOrderedImages = orderedImages.filter(url => 
+          currentAllImages.includes(url) || 
+          (req.files?.images && req.files.images.some(f => f.path === url)) ||
+          (req.files?.coverImage && req.files.coverImage[0]?.path === url)
+        );
+        
+        if (validOrderedImages.length > 0) {
+          // First image becomes cover, rest become gallery
+          updateOps.$set.coverImage = validOrderedImages[0];
+          updateOps.$set.images = validOrderedImages.slice(1);
+        }
       }
-    }
+    } else {
+      // Fallback to individual handling if unified reordering not used
+      
+      // Cover
+      if (req.files?.coverImage?.[0]) {
+        updateOps.$set.coverImage = req.files.coverImage[0].path;
+      }
 
-    // REMOVE images (array)
-    if (body.removeImage) {
-      const arr = parseJSON(body.removeImage, []);
-      if (arr.length) {
-        updateOps.$pull = updateOps.$pull || {};
-        updateOps.$pull.images = { $in: arr };
+      // Gallery replace
+      if (req.files?.images?.length) {
+        updateOps.$set.images = req.files.images.map((f) => f.path);
+      }
+
+      // ADD images (array)
+      if (body.addImage) {
+        const arr = parseJSON(body.addImage, []);
+        if (arr.length) {
+          updateOps.$push = updateOps.$push || {};
+          updateOps.$push.images = { $each: arr };
+        }
+      }
+
+      // REMOVE images (array)
+      if (body.removeImage) {
+        const arr = parseJSON(body.removeImage, []);
+        if (arr.length) {
+          updateOps.$pull = updateOps.$pull || {};
+          updateOps.$pull.images = { $in: arr };
+        }
+      }
+
+      // REORDER gallery images only (legacy support)
+      if (body.reorderImages) {
+        const orderedImages = parseJSON(body.reorderImages, []);
+        if (Array.isArray(orderedImages)) {
+          const currentImages = existing.images || [];
+          const validOrderedImages = orderedImages.filter(url => 
+            currentImages.includes(url) || 
+            (req.files?.images && req.files.images.some(f => f.path === url))
+          );
+          updateOps.$set.images = validOrderedImages;
+        }
       }
     }
 
