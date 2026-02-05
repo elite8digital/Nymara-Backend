@@ -959,13 +959,25 @@ export const getOrnaments = async (req, res) => {
       };
     }
 
-    if (subCategory) {
-      filter.subCategory = {
-        $in: Array.isArray(subCategory)
-          ? subCategory
-          : subCategory.split(",").map((s) => s.trim()),
-      };
-    }
+    // if (subCategory) {
+    //   filter.subCategory = {
+    //     $in: Array.isArray(subCategory)
+    //       ? subCategory
+    //       : subCategory.split(",").map((s) => s.trim()),
+    //   };
+    // }
+
+      if (subCategory) {
+  const safeSub = subCategory
+    .toString()
+    .trim()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // escape regex
+
+  filter.subCategory = {
+    $regex: safeSub,
+    $options: "i",
+  };
+}
 
     if (type) filter.type = type;
 
@@ -2450,6 +2462,7 @@ export const deleteOrnament = async (req, res) => {
     res.status(500).json({ message: "Failed to delete ornament", error: err.message });
   }
 };
+
 
 
 
