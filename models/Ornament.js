@@ -15,6 +15,12 @@ const ornamentSchema = new mongoose.Schema(
       required: true,
     },
 
+    designCode:{
+       type: String,
+      index:true,
+
+     },
+
     category: {
       type: String,
       enum: [
@@ -106,33 +112,100 @@ const ornamentSchema = new mongoose.Schema(
 ],
 
 
-    // OPTIONAL — Main Diamond Details
-   diamondDetails: {
-  carat: { type: Number, default: 0 },
-  count: { type: Number, default: 0 },
+//     // OPTIONAL — Main Diamond Details
+//    diamondDetails: {
+//   carat: { type: Number, default: 0 },
+//   count: { type: Number, default: 0 },
+//   color: { type: String, default: "" },
+//   clarity: { type: String, default: "" },
+//   cut: { type: String, default: "" },
+//   pricePerCarat: { type: Number, default: 0 },
+//   useAuto: { type: Boolean, default: true },
+// },
+// mainDiamondTotal: { type: Number, default: 0 },
+
+
+
+// sideDiamondDetails: [
+//   {
+//     carat: { type: Number, default: 0 },
+//     count: { type: Number, default: 0 },
+//     color: { type: String, default: "" },
+//     clarity: { type: String, default: "" },
+//     cut: { type: String, default: "" },
+//     pricePerCarat: { type: Number, default: 0 },
+//     useAuto: { type: Boolean, default: true },
+//   }
+// ],
+
+// sideDiamondTotal: { type: Number, default: 0 },
+
+diamondDetails: {
+  carat: { type: Number, default: 0 },  
+  // NOTE: kept for backward compatibility (manual / auto per-diamond systems)
+
+  count: { type: Number, default: 0 },  
+  // Main diamond count (from spreadsheet / admin)
+
   color: { type: String, default: "" },
   clarity: { type: String, default: "" },
   cut: { type: String, default: "" },
-  pricePerCarat: { type: Number, default: 0 },
-  useAuto: { type: Boolean, default: true },
+
+  pricePerCarat: { type: Number, default: 0 },  
+  // Optional: used ONLY when admin manually splits pricing
+
+  useAuto: { type: Boolean, default: true },  
+  // false when spreadsheet/manual override is used
 },
-mainDiamondTotal: { type: Number, default: 0 },
+
+// ✅ TOTAL MAIN+SIDE DIAMOND PRICE (spreadsheet authoritative)
+mainDiamondTotal: { 
+  type: Number, 
+  default: 0 
+},
 
 
-
+// ---------------- SIDE DIAMONDS ----------------
 sideDiamondDetails: [
   {
-    carat: { type: Number, default: 0 },
-    count: { type: Number, default: 0 },
+    carat: { type: Number, default: 0 },  
+    // Optional – used only if admin later defines per-side diamond sizing
+
+    count: { type: Number, default: 0 },  
+    // Side diamond count from spreadsheet
+
     color: { type: String, default: "" },
     clarity: { type: String, default: "" },
     cut: { type: String, default: "" },
-    pricePerCarat: { type: Number, default: 0 },
+
+    pricePerCarat: { type: Number, default: 0 },  
+    // Optional – manual override support retained
+
     useAuto: { type: Boolean, default: true },
   }
 ],
 
-sideDiamondTotal: { type: Number, default: 0 },
+// Optional: retained for future split pricing
+sideDiamondTotal: { 
+  type: Number, 
+  default: 0 
+},
+
+
+
+
+// Total diamonds count = main + side (from spreadsheet)
+totalDiamondCount: {
+  type: Number,
+  default: 0,
+  index: true
+},
+
+//  Total diamond weight (ct) = main + side (from spreadsheet)
+totalDiamondCarat: {
+  type: Number,
+  default: 0
+},
 
 
 
@@ -192,3 +265,4 @@ ornamentSchema.pre("save", async function (next) {
 });
 
 export default mongoose.model("Ornament", ornamentSchema);
+
