@@ -2018,6 +2018,7 @@ router.get("/ornaments", async (req, res) => {
 
 
 router.get("/ornaments/:id", async (req, res) => {
+    res.set("Cache-Control", "no-store");
   try {
     const { currency = "INR" } = req.query;
     const curr = currency.toUpperCase();
@@ -2415,6 +2416,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
