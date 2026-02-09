@@ -2054,6 +2054,34 @@ router.get("/ornaments/:id", async (req, res) => {
       });
     }
 
+    let purityOptions = [];
+
+if (ornament.designCode) {
+  const sameDesignProducts = await Ornament.find({
+    designCode: ornament.designCode,
+  })
+    .select("_id metal.metalType")
+    .lean();
+
+  purityOptions = sameDesignProducts
+    .filter((p) => {
+      const metalType = p.metal?.metalType || "";
+
+      //  Allow only exact Gold (not White/Rose)
+      return (
+        (metalType === "14K Gold" || metalType === "18K Gold")
+      );
+    })
+    .map((p) => ({
+      id: p._id.toString(),
+      purity: p.metal?.metalType,
+    }));
+
+  console.log(" FINAL purityOptions:", purityOptions);
+}
+
+
+
     const pricing = await Pricing.findOne();
     if (!pricing) {
       return res.status(500).json({
@@ -2416,6 +2444,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
