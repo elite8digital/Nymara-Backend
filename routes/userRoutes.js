@@ -2054,11 +2054,45 @@ router.get("/ornaments/:id", async (req, res) => {
       });
     }
 
-    let purityOptions = [];
+//     let purityOptions = [];
 
-if (ornament.designCode) {
+// if (ornament.designCode) {
+//   const sameDesignProducts = await Ornament.find({
+//     designCode: ornament.designCode,
+//   })
+//     .select("_id metal.metalType")
+//     .lean();
+
+//   purityOptions = sameDesignProducts
+//     .filter((p) => {
+//       const metalType = p.metal?.metalType || "";
+
+//       //  Allow only exact Gold (not White/Rose)
+//       return (
+//         (metalType === "14K Gold" || metalType === "18K Gold")
+//       );
+//     })
+//     .map((p) => ({
+//       id: p._id.toString(),
+//       purity: p.metal?.metalType,
+//     }));
+
+//   console.log(" FINAL purityOptions:", purityOptions);
+// }
+
+
+    
+let purityOptions = [];
+
+const designCode =
+  ornament.designCode ||
+  (ornament.isVariant
+    ? (await Ornament.findById(ornament.parentProduct).lean())?.designCode
+    : null);
+
+if (designCode) {
   const sameDesignProducts = await Ornament.find({
-    designCode: ornament.designCode,
+    designCode,
   })
     .select("_id metal.metalType")
     .lean();
@@ -2066,18 +2100,12 @@ if (ornament.designCode) {
   purityOptions = sameDesignProducts
     .filter((p) => {
       const metalType = p.metal?.metalType || "";
-
-      //  Allow only exact Gold (not White/Rose)
-      return (
-        (metalType === "14K Gold" || metalType === "18K Gold")
-      );
+      return metalType === "14K Gold" || metalType === "18K Gold";
     })
     .map((p) => ({
       id: p._id.toString(),
       purity: p.metal?.metalType,
     }));
-
-  console.log(" FINAL purityOptions:", purityOptions);
 }
 
 
@@ -2444,6 +2472,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
