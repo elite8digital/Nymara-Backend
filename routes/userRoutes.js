@@ -2084,28 +2084,39 @@ router.get("/ornaments/:id", async (req, res) => {
     
 let purityOptions = [];
 
-const designCode =
-  ornament.designCode ||
-  (ornament.isVariant
-    ? (await Ornament.findById(ornament.parentProduct).lean())?.designCode
-    : null);
+if (!ornament.isVariant && ornament.designCode) {
 
-if (designCode) {
+
   const sameDesignProducts = await Ornament.find({
-    designCode,
+    designCode: ornament.designCode,
   })
     .select("_id metal.metalType")
     .lean();
 
-  purityOptions = sameDesignProducts
-    .filter((p) => {
-      const metalType = p.metal?.metalType || "";
-      return metalType === "14K Gold" || metalType === "18K Gold";
-    })
-    .map((p) => ({
-      id: p._id.toString(),
-      purity: p.metal?.metalType,
-    }));
+  console.log(" Same design products:", sameDesignProducts);
+
+  const purityMap = new Map();
+
+  sameDesignProducts.forEach((item) => {
+    const match = item.metal?.metalType
+      ?.toUpperCase()
+      .match(/(\d{2}K)/);
+
+    if (match) {
+      const purity = match[1];
+
+      if (!purityMap.has(purity)) {
+        purityMap.set(purity, {
+          id: item._id.toString(),
+          purity,
+        });
+      }
+    }
+  });
+
+  purityOptions = Array.from(purityMap.values());
+
+  console.log(" Final purityOptions:", purityOptions);
 }
 
 
@@ -2257,7 +2268,7 @@ if (designCode) {
   return {
     ...item,
 
-    // 🔥 Attach breakdown values to response
+    //  Attach breakdown values to response
     metalTotal: breakdown.metalTotal,
     mainDiamondTotal: breakdown.diamondTotal,
     gemstonesTotal: breakdown.gemstonesTotal,
@@ -2336,6 +2347,7 @@ if (designCode) {
       ornament: {
         ...convertedMain,
         variants: convertedVariants,
+          purityOptions,
         currentPurity:
           ornament.metal?.metalType?.match(/(\d{2}K)/)?.[1] ||
           null,
@@ -2472,6 +2484,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
