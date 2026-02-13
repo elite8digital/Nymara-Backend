@@ -2254,10 +2254,12 @@ if (!ornament.isVariant && ornament.designCode) {
   const symbol = selectedCurrency.symbol;
 
   const dbPrice = item.prices?.[curr]?.amount;
-  const displayPrice =
-    dbPrice !== undefined
-      ? Number(dbPrice)
-      : baseINR * rate;
+  // const displayPrice =
+  //   dbPrice !== undefined
+  //     ? Number(dbPrice)
+  //     : baseINR * rate;
+
+    const displayPrice = baseINR * rate;
 
   const dbMaking = item.makingChargesByCountry?.[curr]?.amount;
   const convertedMaking =
@@ -2484,6 +2486,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
