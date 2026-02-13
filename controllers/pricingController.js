@@ -7,46 +7,48 @@ import Ornament from "../models/Ornament.js";
 // =======================
 export const updatePricing = async (req, res) => {
   try {
-    const {
-      goldPrices,
-      diamondPricePerCarat,
-      gemstonePrices,
-      platinumPricePerGram,
-      silver925PricePerGram,
-      goldVermeilPricePerGram,
-    } = req.body;
+const { 
+  goldPrices, 
+  diamondPricePerCarat, 
+  gemstonePrices,
+  platinumPricePerGram,
+  silver925PricePerGram,
+  goldVermeilPricePerGram
+} = req.body;
+
+
 
     if (!goldPrices && !diamondPricePerCarat && !gemstonePrices) {
-      return res
-        .status(400)
-        .json({ message: "Provide at least one price field" });
-    }
+  return res.status(400).json({ message: "Provide at least one price field" });
+}
+
 
     // Load or create pricing
     let pricing = await Pricing.findOne();
-    if (!pricing) {
-      pricing = new Pricing({
-        goldPrices: goldPrices || {},
-        diamondPricePerCarat: diamondPricePerCarat || 0,
-        gemstonePrices: gemstonePrices || {},
+   if (!pricing) {
+  pricing = new Pricing({
+    goldPrices: goldPrices || {},
+    diamondPricePerCarat: diamondPricePerCarat || 0,
+    gemstonePrices: gemstonePrices || {},
 
-        platinumPricePerGram: platinumPricePerGram || 0,
-        silver925PricePerGram: silver925PricePerGram || 0,
-        goldVermeilPricePerGram: goldVermeilPricePerGram || 0,
-      });
-    } else {
+    platinumPricePerGram: platinumPricePerGram || 0,
+    silver925PricePerGram: silver925PricePerGram || 0,
+    goldVermeilPricePerGram: goldVermeilPricePerGram || 0,
+  });
+}
+ else {
       if (goldPrices) pricing.goldPrices = goldPrices;
-      if (diamondPricePerCarat)
-        pricing.diamondPricePerCarat = diamondPricePerCarat;
+      if (diamondPricePerCarat) pricing.diamondPricePerCarat = diamondPricePerCarat;
       if (gemstonePrices) pricing.gemstonePrices = gemstonePrices;
-      if (platinumPricePerGram !== undefined)
-        pricing.platinumPricePerGram = platinumPricePerGram;
+       if (platinumPricePerGram !== undefined)
+    pricing.platinumPricePerGram = platinumPricePerGram;
 
-      if (silver925PricePerGram !== undefined)
-        pricing.silver925PricePerGram = silver925PricePerGram;
+  if (silver925PricePerGram !== undefined)
+    pricing.silver925PricePerGram = silver925PricePerGram;
 
-      if (goldVermeilPricePerGram !== undefined)
-        pricing.goldVermeilPricePerGram = goldVermeilPricePerGram;
+  if (goldVermeilPricePerGram !== undefined)
+    pricing.goldVermeilPricePerGram = goldVermeilPricePerGram;
+     
     }
     await pricing.save();
 
@@ -70,7 +72,7 @@ export const updatePricing = async (req, res) => {
 
         if (!goldRate) {
           console.warn(
-            `⚠️ No matching gold rate for ${item.name} (${purity || "unknown purity"})`,
+            `⚠️ No matching gold rate for ${item.name} (${purity || "unknown purity"})`
           );
           return;
         }
@@ -94,72 +96,56 @@ export const updatePricing = async (req, res) => {
     }
 
     // 🟣 NEW: FIXED PLATINUM / SILVER / VERMEIL RECALCULATION
-    if (
-      req.body.platinumPricePerGram ||
-      req.body.silver925PricePerGram ||
-      req.body.goldVermeilPricePerGram
-    ) {
-      const metalOrnaments = await Ornament.find({
-        categoryType: "Gold", // they are still metal category
-        "metal.metalType": {
-          $in: ["Platinum", "925 Sterling Silver", "Gold Vermeil"],
-        },
-      });
+if (req.body.platinumPricePerGram || req.body.silver925PricePerGram || req.body.goldVermeilPricePerGram) {
 
-      metalOrnaments.forEach((item) => {
-        const metal = item.metal || {};
-        let pricePerGram = 0;
+  const metalOrnaments = await Ornament.find({
+    categoryType: "Gold",  // they are still metal category
+    "metal.metalType": { $in: ["Platinum", "925 Sterling Silver", "Gold Vermeil"] }
+  });
 
-        const type = metal.metalType;
+  metalOrnaments.forEach((item) => {
+    const metal = item.metal || {};
+    let pricePerGram = 0;
 
-        if (type === "Platinum") {
-          pricePerGram = Number(
-            req.body.platinumPricePerGram || pricing.platinumPricePerGram || 0,
-          );
-        }
+    const type = metal.metalType;
 
-        if (type === "925 Sterling Silver") {
-          pricePerGram = Number(
-            req.body.silver925PricePerGram ||
-              pricing.silver925PricePerGram ||
-              0,
-          );
-        }
-
-        if (type === "Gold Vermeil") {
-          // Option 1: Override
-          if (
-            req.body.goldVermeilPricePerGram ||
-            pricing.goldVermeilPricePerGram > 0
-          ) {
-            pricePerGram = Number(
-              req.body.goldVermeilPricePerGram ||
-                pricing.goldVermeilPricePerGram,
-            );
-          } else {
-            // Option 2: Auto-calc
-            const silver = pricing.silver925PricePerGram || 0;
-            const gold18 = pricing.goldPrices.get("18K") || 0;
-            pricePerGram = silver + gold18 * 0.05;
-          }
-        }
-
-        const newPrice = Number(metal.weight || 0) * pricePerGram;
-
-        bulkOps.push({
-          updateOne: {
-            filter: { _id: item._id },
-            update: {
-              $set: {
-                price: newPrice,
-                originalPrice: newPrice,
-                "prices.INR.amount": newPrice,
-              },
-            },
-          },
-        });
-      });
+    if (type === "Platinum") {
+      pricePerGram = Number(req.body.platinumPricePerGram || pricing.platinumPricePerGram || 0);
     }
+
+    if (type === "925 Sterling Silver") {
+      pricePerGram = Number(req.body.silver925PricePerGram || pricing.silver925PricePerGram || 0);
+    }
+
+    if (type === "Gold Vermeil") {
+      // Option 1: Override
+      if (req.body.goldVermeilPricePerGram || pricing.goldVermeilPricePerGram > 0) {
+        pricePerGram = Number(req.body.goldVermeilPricePerGram || pricing.goldVermeilPricePerGram);
+      } else {
+        // Option 2: Auto-calc
+        const silver = pricing.silver925PricePerGram || 0;
+        const gold18 = pricing.goldPrices.get("18K") || 0;
+        pricePerGram = silver + gold18 * 0.05;
+      }
+    }
+
+    const newPrice = Number(metal.weight || 0) * pricePerGram;
+
+    bulkOps.push({
+      updateOne: {
+        filter: { _id: item._id },
+        update: {
+          $set: {
+            price: newPrice,
+            originalPrice: newPrice,
+            "prices.INR.amount": newPrice,
+          },
+        },
+      },
+    });
+  });
+}
+
 
     // 💎 FIXED DIAMOND PRICE RECALCULATION
     if (diamondPricePerCarat) {
@@ -186,124 +172,128 @@ export const updatePricing = async (req, res) => {
       });
     }
 
+  
     // 🟢 FIXED GEMSTONE PRICE RECALCULATION
+if (gemstonePrices) {
+  const gemOrnaments = await Ornament.find({ categoryType: "Gemstone" });
+
+  gemOrnaments.forEach((item) => {
+    const stones = item.gemstoneDetails || [];
+    let totalGemCost = 0;
+
+    stones.forEach((stone) => {
+      const stoneType =
+        stone.stoneType ||
+        stone.type ||
+        stone.gemstoneType ||
+        stone.name ||
+        null;
+
+      if (!stoneType) return;
+
+      // Handle Map or plain object
+      let rate = 0;
+
+      if (pricing.gemstonePrices instanceof Map) {
+        rate = Number(pricing.gemstonePrices.get(stoneType) || 0);
+      } else {
+        rate = Number(pricing.gemstonePrices?.[stoneType] || 0);
+      }
+
+      const carat = Number(stone.carat || stone.weight || 0);
+      const count = Number(stone.count || 1);
+
+      totalGemCost += rate * carat * count;
+    });
+
+    bulkOps.push({
+      updateOne: {
+        filter: { _id: item._id },
+        update: {
+          $set: {
+            price: totalGemCost,
+            originalPrice: totalGemCost,
+            "prices.INR.amount": totalGemCost,
+          },
+        },
+      },
+    });
+  });
+}
+
+// 🟣 FIXED COMPOSITE PRODUCT RECALCULATION
+if (goldPrices || diamondPricePerCarat || gemstonePrices) {
+  const compositeOrnaments = await Ornament.find({ categoryType: "Composite" });
+
+  compositeOrnaments.forEach((item) => {
+    let goldCost = 0;
+    let diamondCost = 0;
+    let gemstoneCost = 0;
+
+    /* ---------------- GOLD ---------------- */
+    if (goldPrices) {
+      const metal = item.metal || {};
+      const purityMatch =
+        metal.purity?.toUpperCase().match(/(\d+K)/) ||
+        metal.metalType?.toUpperCase().match(/(\d+K)/);
+
+      const purity = purityMatch ? purityMatch[1] : null;
+      const rate = purity ? Number(goldPrices[purity] || 0) : 0;
+
+      goldCost = Number(metal.weight || 0) * rate;
+    }
+
+    /* ---------------- DIAMOND ---------------- */
+    if (diamondPricePerCarat) {
+      const d = item.diamondDetails || {};
+      diamondCost =
+        Number(d.carat || 0) *
+        Number(d.count || 0) *
+        Number(diamondPricePerCarat || 0);
+
+      (item.sideDiamondDetails || []).forEach((s) => {
+        diamondCost +=
+          Number(s.carat || 0) *
+          Number(s.count || 0) *
+          Number(diamondPricePerCarat || 0);
+      });
+    }
+
+    /* ---------------- GEMSTONES ---------------- */
     if (gemstonePrices) {
-      const gemOrnaments = await Ornament.find({ categoryType: "Gemstone" });
+      (item.stones || []).forEach((stone) => {
+        const stoneType = stone.type || stone.stoneType || "";
+        const rate =
+          gemstonePrices[stoneType] ||
+          gemstonePrices[stone.type] ||
+          0;
 
-      gemOrnaments.forEach((item) => {
-        const stones = item.gemstoneDetails || [];
-        let totalGemCost = 0;
-
-        stones.forEach((stone) => {
-          const stoneType =
-            stone.stoneType ||
-            stone.type ||
-            stone.gemstoneType ||
-            stone.name ||
-            null;
-
-          if (!stoneType) return;
-
-          // Handle Map or plain object
-          let rate = 0;
-
-          if (pricing.gemstonePrices instanceof Map) {
-            rate = Number(pricing.gemstonePrices.get(stoneType) || 0);
-          } else {
-            rate = Number(pricing.gemstonePrices?.[stoneType] || 0);
-          }
-
-          const carat = Number(stone.carat || stone.weight || 0);
-          const count = Number(stone.count || 1);
-
-          totalGemCost += rate * carat * count;
-        });
-
-        bulkOps.push({
-          updateOne: {
-            filter: { _id: item._id },
-            update: {
-              $set: {
-                price: totalGemCost,
-                originalPrice: totalGemCost,
-                "prices.INR.amount": totalGemCost,
-              },
-            },
-          },
-        });
+        gemstoneCost +=
+          Number(stone.weight || 0) *
+          Number(stone.count || 1) *
+          Number(rate || 0);
       });
     }
 
-    // 🟣 FIXED COMPOSITE PRODUCT RECALCULATION
-    if (goldPrices || diamondPricePerCarat || gemstonePrices) {
-      const compositeOrnaments = await Ornament.find({
-        categoryType: "Composite",
-      });
+    const newPrice = goldCost + diamondCost + gemstoneCost;
 
-      compositeOrnaments.forEach((item) => {
-        let goldCost = 0;
-        let diamondCost = 0;
-        let gemstoneCost = 0;
-
-        /* ---------------- GOLD ---------------- */
-        if (goldPrices) {
-          const metal = item.metal || {};
-          const purityMatch =
-            metal.purity?.toUpperCase().match(/(\d+K)/) ||
-            metal.metalType?.toUpperCase().match(/(\d+K)/);
-
-          const purity = purityMatch ? purityMatch[1] : null;
-          const rate = purity ? Number(goldPrices[purity] || 0) : 0;
-
-          goldCost = Number(metal.weight || 0) * rate;
-        }
-
-        /* ---------------- DIAMOND ---------------- */
-        if (diamondPricePerCarat) {
-          const d = item.diamondDetails || {};
-          diamondCost =
-            Number(d.carat || 0) *
-            Number(d.count || 0) *
-            Number(diamondPricePerCarat || 0);
-
-          (item.sideDiamondDetails || []).forEach((s) => {
-            diamondCost +=
-              Number(s.carat || 0) *
-              Number(s.count || 0) *
-              Number(diamondPricePerCarat || 0);
-          });
-        }
-
-        /* ---------------- GEMSTONES ---------------- */
-        if (gemstonePrices) {
-          (item.stones || []).forEach((stone) => {
-            const stoneType = stone.type || stone.stoneType || "";
-            const rate =
-              gemstonePrices[stoneType] || gemstonePrices[stone.type] || 0;
-
-            gemstoneCost +=
-              Number(stone.weight || 0) *
-              Number(stone.count || 1) *
-              Number(rate || 0);
-          });
-        }
-
-        const newPrice = goldCost + diamondCost + gemstoneCost;
-
-        bulkOps.push({
-          updateOne: {
-            filter: { _id: item._id },
-            update: {
-              $set: {
-                price: newPrice,
-                originalPrice: newPrice,
-                "prices.INR.amount": newPrice,
-              },
-            },
+    bulkOps.push({
+      updateOne: {
+        filter: { _id: item._id },
+        update: {
+          $set: {
+            price: newPrice,
+            originalPrice: newPrice,
+            "prices.INR.amount": newPrice,
           },
-        });
-      });
-    }
+        },
+      },
+    });
+  });
+}
+
+
+
 
     // Perform bulk update
     if (bulkOps.length > 0) {
@@ -315,6 +305,7 @@ export const updatePricing = async (req, res) => {
       message: "Pricing updated successfully using correct purity logic",
       pricing,
     });
+
   } catch (err) {
     console.error("❌ Pricing update error:", err);
     return res.status(500).json({
