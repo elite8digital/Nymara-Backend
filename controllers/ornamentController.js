@@ -17,8 +17,6 @@ const safeObjectId = (id) => {
   return null;
 };
 
-
-
 function convertPricing(item, curr, selectedCurrency) {
   let price = item.price || 0;
   let making = item.makingCharges || 0;
@@ -41,9 +39,7 @@ function convertPricing(item, curr, selectedCurrency) {
 
   const total = Number((price + making).toFixed(2));
   const original =
-    Number(item.originalPrice) > 0
-      ? Number(item.originalPrice)
-      : Number(price);
+    Number(item.originalPrice) > 0 ? Number(item.originalPrice) : Number(price);
 
   const discount =
     item.discount || Math.round(((original - price) / original) * 100) || 0;
@@ -59,13 +55,12 @@ function convertPricing(item, curr, selectedCurrency) {
   };
 }
 
-
 // Upload middleware
 export const uploadOrnamentImages = upload.fields([
   { name: "coverImage", maxCount: 1 },
   { name: "images", maxCount: 20 },
   { name: "videoFile", maxCount: 1 },
-  { name: "model3D", maxCount: 1 }
+  { name: "model3D", maxCount: 1 },
 ]);
 
 /* -----------------------------------------
@@ -104,7 +99,10 @@ export const addOrnament = async (req, res) => {
       req.files = grouped;
     }
 
-    console.log(" FILES (ORGANIZED):", util.inspect(req.files, { depth: null }));
+    console.log(
+      " FILES (ORGANIZED):",
+      util.inspect(req.files, { depth: null }),
+    );
 
     /* -----------------------------------------
        Extract media (after fix)
@@ -119,33 +117,31 @@ export const addOrnament = async (req, res) => {
     /* -----------------------------------------
        Parse all dynamic fields
     ------------------------------------------ */
-    const isVariant = req.body.isVariant === "true" || req.body.isVariant === true;
+    const isVariant =
+      req.body.isVariant === "true" || req.body.isVariant === true;
 
     const metal = safeJSON(req.body.metal, {});
     // FIX: Accept both stones[] and gemstoneDetails[]
     const stones = safeJSON(req.body.stones, []);
 
     const normalizedGemstones = (stones || [])
-      .filter(st => st.stoneType || st.type || st.gemstoneType || st.name) // ⭐ FIX
+      .filter((st) => st.stoneType || st.type || st.gemstoneType || st.name) // ⭐ FIX
       .map((st) => ({
-        stoneType:
-          st.stoneType ||
-          st.type ||
-          st.gemstoneType ||
-          st.name ||
-          "",
+        stoneType: st.stoneType || st.type || st.gemstoneType || st.name || "",
         carat: Number(st.carat || 0),
         count: Number(st.count || 1),
         color: st.color || "",
         clarity: st.clarity || "",
         cut: st.cut || "",
         pricePerCarat: null,
-        useAuto: true
+        useAuto: true,
       }));
 
-
     const prices = safeJSON(req.body.prices, {});
-    const makingChargesByCountry = safeJSON(req.body.makingChargesByCountry, {});
+    const makingChargesByCountry = safeJSON(
+      req.body.makingChargesByCountry,
+      {},
+    );
     const diamondDetails = safeJSON(req.body.diamondDetails, {});
     const sideDiamondDetails = safeJSON(req.body.sideDiamondDetails, {});
 
@@ -158,29 +154,31 @@ export const addOrnament = async (req, res) => {
       color: diamondDetails.color || "",
       clarity: diamondDetails.clarity || "",
       cut: diamondDetails.cut || "",
-      pricePerCarat: Number(diamondDetails.pricePerCarat || pricing?.diamondPricePerCarat || 0),
+      pricePerCarat: Number(
+        diamondDetails.pricePerCarat || pricing?.diamondPricePerCarat || 0,
+      ),
       useAuto: diamondDetails.useAuto !== false,
     };
 
     //  FIX: Normalize sideDiamondDetails
-    const normalizedSideDiamonds = (Array.isArray(sideDiamondDetails) ? sideDiamondDetails : []).map(sd => ({
+    const normalizedSideDiamonds = (
+      Array.isArray(sideDiamondDetails) ? sideDiamondDetails : []
+    ).map((sd) => ({
       carat: Number(sd.carat || 0),
       count: Number(sd.count || 0),
       color: sd.color || "",
       clarity: sd.clarity || "",
       cut: sd.cut || "",
-      pricePerCarat: Number(sd.pricePerCarat || pricing?.diamondPricePerCarat || 0),
+      pricePerCarat: Number(
+        sd.pricePerCarat || pricing?.diamondPricePerCarat || 0,
+      ),
       useAuto: sd.useAuto !== false,
     }));
-
-
 
     // // 1️ GOLD PRICE
     // let goldRate = 0;
 
-
     // const metalData = metal || {};
-
 
     // //  FIX: Safe purity extraction
     // const extractPurity = (value) => {
@@ -192,7 +190,6 @@ export const addOrnament = async (req, res) => {
     // const purity =
     //   extractPurity(metalData.purity) || extractPurity(metalData.metalType);
 
-
     // // Find rate
     // if (purity && pricing?.goldPrices instanceof Map) {
     //   goldRate = Number(pricing.goldPrices.get(purity) || 0);
@@ -200,7 +197,6 @@ export const addOrnament = async (req, res) => {
     //   // in case mongoose converts Map to plain object (rare cases)
     //   goldRate = Number(pricing.goldPrices[purity] || 0);
     // }
-
 
     // const goldTotal = Number(metalData.weight || 0) * goldRate;
 
@@ -252,8 +248,6 @@ export const addOrnament = async (req, res) => {
     // final metal cost
     const goldTotal = Number(metalData.weight || 0) * metalRate;
 
-
-
     //  Use normalized objects for price calculation
 
     // NEW: Manual diamond totals from client
@@ -270,16 +264,17 @@ export const addOrnament = async (req, res) => {
 
     // compute auto side total
     const autoSideTotal = normalizedSideDiamonds.reduce((sum, sd) => {
-      const ppc = Number(sd.pricePerCarat || pricing?.diamondPricePerCarat || 0);
+      const ppc = Number(
+        sd.pricePerCarat || pricing?.diamondPricePerCarat || 0,
+      );
       return sum + Number(sd.carat || 0) * Number(sd.count || 0) * ppc;
     }, 0);
 
     // Use manual totals if provided (> 0), otherwise use auto totals
-    const mainTotal = manualMainDiamondTotal > 0 ? manualMainDiamondTotal : autoMainTotal;
-    const sideTotal = manualSideDiamondTotal > 0 ? manualSideDiamondTotal : autoSideTotal;
-
-
-
+    const mainTotal =
+      manualMainDiamondTotal > 0 ? manualMainDiamondTotal : autoMainTotal;
+    const sideTotal =
+      manualSideDiamondTotal > 0 ? manualSideDiamondTotal : autoSideTotal;
 
     // 4️ STONES
     // 4️GEMSTONES (AUTO PRICE USING NORMALIZED GEMSTONES)
@@ -301,20 +296,12 @@ export const addOrnament = async (req, res) => {
       gemstonesTotal += rate * carat * count;
     });
 
-
-
     // 5️⃣ MAKING CHARGES
     const making = Number(req.body.makingCharges || 0);
 
-
     // 6️ FINAL PRICE
     const autoPrice =
-      goldTotal +
-      mainTotal +
-      sideTotal +
-      gemstonesTotal +
-      making;
-
+      goldTotal + mainTotal + sideTotal + gemstonesTotal + making;
 
     console.log("DEBUG Backend Pricing:");
     console.log("Purity:", purity);
@@ -336,9 +323,10 @@ export const addOrnament = async (req, res) => {
     // Auto-calc discount
     let discount = 0;
     if (originalPrice > 0) {
-      discount = Math.round(((originalPrice - autoPrice) / originalPrice) * 100);
+      discount = Math.round(
+        ((originalPrice - autoPrice) / originalPrice) * 100,
+      );
     }
-
 
     /* -----------------------------------------
        Create product
@@ -366,12 +354,9 @@ export const addOrnament = async (req, res) => {
       mainDiamondTotal: mainTotal,
       sideDiamondTotal: sideTotal,
 
-
       price: autoPrice,
       originalPrice: originalPrice,
       discount: discount,
-
-
 
       makingCharges: Number(req.body.makingCharges) || 0,
       prices,
@@ -383,7 +368,8 @@ export const addOrnament = async (req, res) => {
       videoUrl,
 
       stock: Number(req.body.stock) || 1,
-      isFeatured: req.body.isFeatured === "true" || req.body.isFeatured === true,
+      isFeatured:
+        req.body.isFeatured === "true" || req.body.isFeatured === true,
 
       color: req.body.color || "",
       size: req.body.size || "",
@@ -396,7 +382,6 @@ export const addOrnament = async (req, res) => {
       message: isVariant ? "Variant product created" : "Base product created",
       product,
     });
-
   } catch (err) {
     console.error(" ADD PRODUCT ERROR:", err);
     return res.status(500).json({
@@ -406,10 +391,6 @@ export const addOrnament = async (req, res) => {
     });
   }
 };
-
-
-
-
 
 // Get All Ornaments (with filters)
 // export const getOrnaments = async (req, res) => {
@@ -428,8 +409,6 @@ export const addOrnament = async (req, res) => {
 //       currency = "INR",
 //       includeVariants = false,
 //     } = req.query;
-
-
 
 //     const curr = currency.toUpperCase();
 //     const skip = (Number(page) - 1) * Number(limit);
@@ -732,7 +711,6 @@ export const addOrnament = async (req, res) => {
 //       .skip(skip)
 //       .limit(Number(limit))
 //       .lean();
-       
 
 //     // -----------------------
 // // NEW PRICING ENGINE
@@ -805,8 +783,6 @@ export const addOrnament = async (req, res) => {
 //   return { metalINR, mainDiamond, sideDiamond, gemstonesINR, basePrice };
 // };
 
-    
-
 //     const total = await Ornament.countDocuments(filter);
 
 //     /* =====================================================
@@ -845,7 +821,6 @@ export const addOrnament = async (req, res) => {
 
 // const price = convertedBase + convertedMaking;
 // const currencySymbol = currencyRates[curr].symbol;
-
 
 //           if (startingPrice === null || price < startingPrice) {
 //             startingPrice = price;
@@ -941,7 +916,7 @@ export const getOrnaments = async (req, res) => {
       AED: { rate: 0.009, symbol: "د.إ" },
       AUD: { rate: 0.018, symbol: "A$" },
       SGD: { rate: 0.016, symbol: "S$" },
-      JPY: { rate: 1.8, symbol: "¥" }
+      JPY: { rate: 1.8, symbol: "¥" },
     };
 
     /* =====================================================
@@ -967,17 +942,17 @@ export const getOrnaments = async (req, res) => {
     //   };
     // }
 
-      if (subCategory) {
-  const safeSub = subCategory
-    .toString()
-    .trim()
-    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // escape regex
+    if (subCategory) {
+      const safeSub = subCategory
+        .toString()
+        .trim()
+        .replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // escape regex
 
-  filter.subCategory = {
-    $regex: safeSub,
-    $options: "i",
-  };
-}
+      filter.subCategory = {
+        $regex: safeSub,
+        $options: "i",
+      };
+    }
 
     if (type) filter.type = type;
 
@@ -1008,28 +983,26 @@ export const getOrnaments = async (req, res) => {
     //   filter.isVariant = false;
     // }
 
-if (includeVariants === "false") {
-  filter.isVariant = false;
-}
+    if (includeVariants === "false") {
+      filter.isVariant = false;
+    }
 
-// SEARCH (merged safely)
-if (search) {
-  const regex = new RegExp(search.trim(), "i");
+    // SEARCH (merged safely)
+    if (search) {
+      const regex = new RegExp(search.trim(), "i");
 
-  filter.$and = filter.$and || [];
-  filter.$and.push({
-    $or: [
-      { name: regex },
-      { description: regex },
-      { sku: regex },
-      { color: regex },
-      { metalType: regex },
-      { variantLabel: regex },
-    ],
-  });
-}
-
-
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { name: regex },
+          { description: regex },
+          { sku: regex },
+          { color: regex },
+          { metalType: regex },
+          { variantLabel: regex },
+        ],
+      });
+    }
 
     /* =====================================================
        2. SORTING
@@ -1066,7 +1039,9 @@ if (search) {
 
     const extractPurity = (val) => {
       if (!val) return null;
-      const m = String(val).toUpperCase().match(/(\d+K)/);
+      const m = String(val)
+        .toUpperCase()
+        .match(/(\d+K)/);
       return m ? m[1] : null;
     };
 
@@ -1075,17 +1050,14 @@ if (search) {
       const weight = Number(metal.weight || 0);
 
       const purity =
-        extractPurity(metal.purity) ||
-        extractPurity(metal.metalType) ||
-        null;
+        extractPurity(metal.purity) || extractPurity(metal.metalType) || null;
 
       let metalINR = 0;
 
       // GOLD
       if (purity) {
         const gp =
-          pricing.goldPrices?.get?.(purity) ??
-          pricing.goldPrices?.[purity];
+          pricing.goldPrices?.get?.(purity) ?? pricing.goldPrices?.[purity];
         metalINR = weight * Number(gp || 0);
       }
 
@@ -1106,8 +1078,8 @@ if (search) {
         } else {
           const silver = Number(pricing.silver925PricePerGram || 0);
           const gold18 = Number(
-            (pricing.goldPrices?.get?.("18K") ??
-              pricing.goldPrices?.["18K"]) || 0
+            (pricing.goldPrices?.get?.("18K") ?? pricing.goldPrices?.["18K"]) ||
+              0,
           );
           metalINR = weight * (silver + gold18 * 0.05);
         }
@@ -1159,16 +1131,15 @@ if (search) {
 
         let startingPrice = null;
 
-        let currencySymbol = currencyRates[curr].symbol;  
+        let currencySymbol = currencyRates[curr].symbol;
 
         productVariants.forEach((v) => {
-          const totals = computeTotals(v);
+          // ✅ USE STORED PRICE FROM DB
+          const storedPrice = Number(v.price || 0);
+          const makingCharge = Number(v.makingCharges || 0);
           const rate = currencyRates[curr].rate;
 
-          const convertedBase = totals.basePrice * rate;
-          const convertedMaking = Number(v.makingCharges || 0) * rate;
-
-          const price = convertedBase + convertedMaking;
+          const price = (storedPrice + makingCharge) * rate;
 
           if (startingPrice === null || price < startingPrice) {
             startingPrice = price;
@@ -1190,19 +1161,19 @@ if (search) {
       /* --------------------------
          VARIANT PRODUCT
       -------------------------- */
-
-     
-      const totals = computeTotals(orn);
+      // ✅ USE STORED PRICE FROM DB
+      const storedPrice = Number(orn.price || 0);
+      const makingCharge = Number(orn.makingCharges || 0);
       const rate = currencyRates[curr].rate;
 
-      const convertedBase = totals.basePrice * rate;
-      const convertedMaking = Number(orn.makingCharges || 0) * rate;
+      const price = (storedPrice + makingCharge) * rate;
+      const currencySymbol = currencyRates[curr].symbol;
 
-      const price = convertedBase + convertedMaking;  
-      const currencySymbol = currencyRates[curr].symbol; 
-
+      
       const originalPrice = orn.originalPrice || price;
-      const discount = Math.round(((originalPrice - price) / originalPrice) * 100);
+      const discount = Math.round(
+        ((originalPrice - price) / originalPrice) * 100,
+      );
 
       return {
         ...orn,
@@ -1238,12 +1209,6 @@ if (search) {
   }
 };
 
-
-
-
-
-
-
 // -----------------------------------------------------
 // PRICE CONVERTER
 // -----------------------------------------------------
@@ -1261,7 +1226,7 @@ export const getOrnamentById = async (req, res) => {
       AED: { rate: 0.009, symbol: "د.إ" },
       AUD: { rate: 0.018, symbol: "A$" },
       SGD: { rate: 0.016, symbol: "S$" },
-      JPY: { rate: 1.8, symbol: "¥" }
+      JPY: { rate: 1.8, symbol: "¥" },
     };
     const selectedCurrency = currencyRates[curr] || currencyRates.INR;
 
@@ -1269,8 +1234,6 @@ export const getOrnamentById = async (req, res) => {
        FETCH PRODUCT
     ------------------------------------------- */
     let ornament = await Ornament.findById(id).lean();
-
-   
 
     //  Normalize metal
     ornament.metal = {
@@ -1340,7 +1303,6 @@ export const getOrnamentById = async (req, res) => {
       }));
     }
 
-
     // ⭐ Normalize price fields
     ornament.price = Number(ornament.price || 0);
     ornament.originalPrice = Number(ornament.originalPrice || ornament.price);
@@ -1362,7 +1324,11 @@ export const getOrnamentById = async (req, res) => {
         let candidate = null;
 
         // If it's an actual ObjectId instance (bson), call toString()
-        if (value && typeof value === "object" && value._bsontype === "ObjectId") {
+        if (
+          value &&
+          typeof value === "object" &&
+          value._bsontype === "ObjectId"
+        ) {
           candidate = value.toString();
         }
 
@@ -1378,7 +1344,12 @@ export const getOrnamentById = async (req, res) => {
             const s = value.toString();
             if (isValidObjectId(s)) candidate = s;
           }
-          if (!candidate && value.$oid && typeof value.$oid === "string" && isValidObjectId(value.$oid)) {
+          if (
+            !candidate &&
+            value.$oid &&
+            typeof value.$oid === "string" &&
+            isValidObjectId(value.$oid)
+          ) {
             candidate = value.$oid;
           }
         }
@@ -1392,7 +1363,6 @@ export const getOrnamentById = async (req, res) => {
 
     ornament.variants = normalizedVariants;
 
-
     /* -------------------------------------------
    GOLD + DIAMOND + STONE TOTAL CALCULATION
    (INR → then converted based on currency)
@@ -1403,7 +1373,9 @@ export const getOrnamentById = async (req, res) => {
     // Extract purity from "18K", "22K"
     const extractPurity = (val) => {
       if (!val) return null;
-      const m = String(val).toUpperCase().match(/(\d+K)/);
+      const m = String(val)
+        .toUpperCase()
+        .match(/(\d+K)/);
       return m ? m[1] : null;
     };
 
@@ -1412,65 +1384,61 @@ export const getOrnamentById = async (req, res) => {
       const weight = Number(metal.weight || 0);
 
       const purity =
-        extractPurity(metal.purity) ||
-        extractPurity(metal.metalType) ||
-        null;
+        extractPurity(metal.purity) || extractPurity(metal.metalType) || null;
 
       // Gold/gm price from database
       let goldRate = 0;
       if (purity && pricing?.goldPrices) {
         const gp =
-          pricing.goldPrices.get?.(purity) ??
-          pricing.goldPrices[purity];
+          pricing.goldPrices.get?.(purity) ?? pricing.goldPrices[purity];
 
         goldRate = Number(gp || 0);
       }
 
-     let metalINR = 0;
+      let metalINR = 0;
 
-// 1️ GOLD TYPES (14K / 18K / 22K)
-if (purity) {
-  const gp =
-    pricing.goldPrices.get?.(purity) ??
-    pricing.goldPrices[purity];
+      // 1️ GOLD TYPES (14K / 18K / 22K)
+      if (purity) {
+        const gp =
+          pricing.goldPrices.get?.(purity) ?? pricing.goldPrices[purity];
 
-  metalINR = weight * Number(gp || 0);
-}
+        metalINR = weight * Number(gp || 0);
+      }
 
-// 2️ PLATINUM
-else if (metal.metalType === "Platinum") {
-  metalINR = weight * Number(pricing.platinumPricePerGram || 0);
-}
+      // 2️ PLATINUM
+      else if (metal.metalType === "Platinum") {
+        metalINR = weight * Number(pricing.platinumPricePerGram || 0);
+      }
 
-// 3️ 925 STERLING SILVER
-else if (metal.metalType === "925 Sterling Silver") {
-  metalINR = weight * Number(pricing.silver925PricePerGram || 0);
-}
+      // 3️ 925 STERLING SILVER
+      else if (metal.metalType === "925 Sterling Silver") {
+        metalINR = weight * Number(pricing.silver925PricePerGram || 0);
+      }
 
-// 4️ GOLD VERMEIL
-else if (metal.metalType === "Gold Vermeil") {
-  if (pricing.goldVermeilPricePerGram > 0) {
-    metalINR = weight * Number(pricing.goldVermeilPricePerGram);
-  } else {
-    // fallback formula
-    const silver = Number(pricing.silver925PricePerGram || 0);
-   const gold18 = Number(
-  (pricing.goldPrices?.get?.("18K") ?? pricing.goldPrices?.["18K"]) || 0
-);
+      // 4️ GOLD VERMEIL
+      else if (metal.metalType === "Gold Vermeil") {
+        if (pricing.goldVermeilPricePerGram > 0) {
+          metalINR = weight * Number(pricing.goldVermeilPricePerGram);
+        } else {
+          // fallback formula
+          const silver = Number(pricing.silver925PricePerGram || 0);
+          const gold18 = Number(
+            (pricing.goldPrices?.get?.("18K") ?? pricing.goldPrices?.["18K"]) ||
+              0,
+          );
 
-    metalINR = weight * (silver + gold18 * 0.05);
-  }
-}
-
-
-
-
+          metalINR = weight * (silver + gold18 * 0.05);
+        }
+      }
 
       // MAIN DIAMOND — manual override first
       let mainDiamondINR = 0;
 
       // IMPORTANT: check if field actually exists in DB, not value > 0
-      if (item.mainDiamondTotal !== undefined && item.mainDiamondTotal !== null) {
+      if (
+        item.mainDiamondTotal !== undefined &&
+        item.mainDiamondTotal !== null
+      ) {
         // use stored override
         mainDiamondINR = Number(item.mainDiamondTotal);
       } else {
@@ -1482,18 +1450,16 @@ else if (metal.metalType === "Gold Vermeil") {
         const diamondRate = manualPPC > 0 ? manualPPC : globalPPC;
 
         mainDiamondINR =
-          Number(d.carat || 0) *
-          Number(d.count || 0) *
-          diamondRate;
+          Number(d.carat || 0) * Number(d.count || 0) * diamondRate;
       }
-
-
-
 
       // SIDE DIAMONDS — manual override first
       let sideDiamondINR = 0;
 
-      if (item.sideDiamondTotal !== undefined && item.sideDiamondTotal !== null) {
+      if (
+        item.sideDiamondTotal !== undefined &&
+        item.sideDiamondTotal !== null
+      ) {
         sideDiamondINR = Number(item.sideDiamondTotal);
       } else {
         sideDiamondINR = (item.sideDiamondDetails || []).reduce((sum, sd) => {
@@ -1505,26 +1471,18 @@ else if (metal.metalType === "Gold Vermeil") {
         }, 0);
       }
 
-
-
-
       // Stones
       // Gemstones price (auto)
       let gemstonesINR = 0;
 
       (item.gemstoneDetails || []).forEach((st) => {
         const type = st.stoneType || "";
-        const rate =
-          pricing?.gemstonePrices?.[type] ??
-          0;
+        const rate = pricing?.gemstonePrices?.[type] ?? 0;
 
         gemstonesINR += rate * Number(st.carat || 0) * Number(st.count || 1);
       });
 
-
-  const baseINR = metalINR + mainDiamondINR + sideDiamondINR + gemstonesINR;
-
-
+      const baseINR = metalINR + mainDiamondINR + sideDiamondINR + gemstonesINR;
 
       return {
         goldTotal: metalINR,
@@ -1533,7 +1491,6 @@ else if (metal.metalType === "Gold Vermeil") {
         gemstonesTotal: gemstonesINR,
         basePrice: baseINR,
       };
-
     };
 
     const getCountryPrice = (item, curr) => {
@@ -1581,49 +1538,44 @@ else if (metal.metalType === "Gold Vermeil") {
     // };
 
     const convertUsingDB = (item, curr, totals) => {
-  const rate = selectedCurrency.rate;
-  const symbol = selectedCurrency.symbol;
+      const rate = selectedCurrency.rate;
+      const symbol = selectedCurrency.symbol;
 
-  // 1️⃣ DB Price Override
-  const dbPrice = item.prices?.[curr]?.amount;
-  const displayPrice =
-    dbPrice !== undefined && dbPrice !== null
-      ? Number(dbPrice)
-      : totals.basePrice * rate;
+      // 1️⃣ DB Price Override
+      const dbPrice = item.prices?.[curr]?.amount;
+      const displayPrice =
+        dbPrice !== undefined && dbPrice !== null
+          ? Number(dbPrice)
+          : totals.basePrice * rate;
 
-  // 2️⃣ DB Making Override
-  const dbMaking = item.makingChargesByCountry?.[curr]?.amount;
-  const convertedMakingCharge =
-    dbMaking !== undefined && dbMaking !== null
-      ? Number(dbMaking)
-      : Number(item.makingCharges || 0) * rate;
+      // 2️⃣ DB Making Override
+      const dbMaking = item.makingChargesByCountry?.[curr]?.amount;
+      const convertedMakingCharge =
+        dbMaking !== undefined && dbMaking !== null
+          ? Number(dbMaking)
+          : Number(item.makingCharges || 0) * rate;
 
-  return {
-    ...item,
+      return {
+        ...item,
 
-    goldTotal: totals.goldTotal,
-    mainDiamondTotal: totals.mainDiamondTotal,
-    sideDiamondTotal: totals.sideDiamondTotal,
-    gemstonesTotal: totals.gemstonesTotal,
-    basePrice: totals.basePrice,
+        goldTotal: totals.goldTotal,
+        mainDiamondTotal: totals.mainDiamondTotal,
+        sideDiamondTotal: totals.sideDiamondTotal,
+        gemstonesTotal: totals.gemstonesTotal,
+        basePrice: totals.basePrice,
 
-    displayPrice,
-    convertedMakingCharge,
-    totalConvertedPrice: displayPrice + convertedMakingCharge,
+        displayPrice,
+        convertedMakingCharge,
+        totalConvertedPrice: displayPrice + convertedMakingCharge,
 
-    currency: symbol,
-    priceSource: dbPrice ? "DB" : "AUTO",
-    makingSource: dbMaking ? "DB" : "AUTO"
-  };
-};
-
-
-
-
+        currency: symbol,
+        priceSource: dbPrice ? "DB" : "AUTO",
+        makingSource: dbMaking ? "DB" : "AUTO",
+      };
+    };
 
     //  Attach totals to main product
     ornament = { ...ornament, ...computeTotals(ornament) };
-
 
     /* -------------------------------------------
        CASE 1 — VARIANT PRODUCT
@@ -1645,10 +1597,9 @@ else if (metal.metalType === "Gold Vermeil") {
       return res.json({
         success: true,
         type: "variant",
-        ornament: converted
+        ornament: converted,
       });
     }
-
 
     /* -------------------------------------------
        CASE 2 — MAIN PRODUCT
@@ -1656,7 +1607,7 @@ else if (metal.metalType === "Gold Vermeil") {
 
     // SAFE collected IDs as an array of validated hex strings
     const variantIds = Object.values(ornament.variants).filter((x) =>
-      isValidObjectId(x)
+      isValidObjectId(x),
     );
 
     // Fetch linked variants
@@ -1668,15 +1619,15 @@ else if (metal.metalType === "Gold Vermeil") {
     // Also fetch variants using parentProduct
     const directVariants = await Ornament.find({
       parentProduct: ornament._id,
-      isVariant: true
+      isVariant: true,
     }).lean();
 
     // Merge without duplicates
     const allVariants = [
       ...variants,
       ...directVariants.filter(
-        (dv) => !variants.some((v) => v._id.toString() === dv._id.toString())
-      )
+        (dv) => !variants.some((v) => v._id.toString() === dv._id.toString()),
+      ),
     ];
 
     const convertedVariants = allVariants.map((v) => {
@@ -1685,18 +1636,13 @@ else if (metal.metalType === "Gold Vermeil") {
       return { ...converted, ...totals };
     });
 
-
     const totals = computeTotals(ornament);
     const converted = convertUsingDB(ornament, curr, totals);
-
-
 
     // Final total = price + making
     const finalTotal =
       Number(converted.displayPrice || 0) +
       Number(converted.convertedMakingCharge || 0);
-
-
 
     /* -------------------------------------------
        RESPONSE
@@ -1710,28 +1656,24 @@ else if (metal.metalType === "Gold Vermeil") {
         startingPrice:
           convertedVariants.length > 0
             ? Math.min(
-              ...convertedVariants.map(
-                (v) =>
-                  Number(v.displayPrice || 0) +
-                  Number(v.convertedMakingCharge || 0)
+                ...convertedVariants.map(
+                  (v) =>
+                    Number(v.displayPrice || 0) +
+                    Number(v.convertedMakingCharge || 0),
+                ),
               )
-            )
-            : null
-      }
+            : null,
+      },
     });
-
   } catch (err) {
     console.error(" getOrnamentById Error:", err);
     return res.status(500).json({
       success: false,
       message: "Error fetching ornament",
-      error: err.message
+      error: err.message,
     });
   }
 };
-
-
-
 
 // =======================================
 //  GET MAIN PRODUCT (with variant summaries)
@@ -1756,10 +1698,10 @@ export const getMainProduct = async (req, res) => {
     const variantIds = Object.values(main.variants || {});
 
     const variants = await Ornament.find({
-      _id: { $in: variantIds }
+      _id: { $in: variantIds },
     })
       .select(
-        "metalType size color price originalPrice discount coverImage prices makingCharges makingChargesByCountry"
+        "metalType size color price originalPrice discount coverImage prices makingCharges makingChargesByCountry",
       )
       .lean();
 
@@ -1808,7 +1750,6 @@ export const getMainProduct = async (req, res) => {
   }
 };
 
-
 // =======================================
 //  GET VARIANT PRODUCT (full details)
 // =======================================
@@ -1836,7 +1777,9 @@ export const getVariantProduct = async (req, res) => {
       finalPrice = variant.prices[curr].amount;
       symbol = variant.prices[curr].symbol;
     } else if (currencyRates[curr]) {
-      finalPrice = Number((variant.price * currencyRates[curr].rate).toFixed(2));
+      finalPrice = Number(
+        (variant.price * currencyRates[curr].rate).toFixed(2),
+      );
       symbol = currencyRates[curr].symbol;
     }
 
@@ -1847,7 +1790,7 @@ export const getVariantProduct = async (req, res) => {
       makingCharge = variant.makingChargesByCountry[curr].amount;
     } else if (currencyRates[curr]) {
       makingCharge = Number(
-        (variant.makingCharges * currencyRates[curr].rate).toFixed(2)
+        (variant.makingCharges * currencyRates[curr].rate).toFixed(2),
       );
     }
 
@@ -1882,11 +1825,6 @@ export const getVariantProduct = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
-
-
-
-
-
 
 // //  Update Ornament
 // export const updateOrnament = async (req, res) => {
@@ -2107,36 +2045,44 @@ export const updateOrnament = async (req, res) => {
     const body = req.body;
 
     const NORMALIZE_METAL = (metal) => {
-  if (!metal) return {};
+      if (!metal) return {};
 
-  const NON_GOLD_METALS = [
-    "Platinum",
-    "925 Sterling Silver",
- 
-    "Gold Vermeil"
-  ];
+      const NON_GOLD_METALS = [
+        "Platinum",
+        "925 Sterling Silver",
 
-  // If metal is non-gold → remove purity so backend doesn't calculate gold rate
-  if (NON_GOLD_METALS.includes(metal.metalType)) {
-    metal.purity = null;
-  }
+        "Gold Vermeil",
+      ];
 
-  return metal;
-};
+      // If metal is non-gold → remove purity so backend doesn't calculate gold rate
+      if (NON_GOLD_METALS.includes(metal.metalType)) {
+        metal.purity = null;
+      }
 
+      return metal;
+    };
 
     console.log("===== BACKEND RAW REQ.BODY =====");
     Object.entries(body).forEach(([k, v]) => {
       console.log(`${k}:`, v, "| type:", typeof v);
     });
 
-    console.log("MAIN TOTAL (raw) =", body.mainDiamondTotal, "| type:", typeof body.mainDiamondTotal);
-    console.log("SIDE TOTAL (raw) =", body.sideDiamondTotal, "| type:", typeof body.sideDiamondTotal);
+    console.log(
+      "MAIN TOTAL (raw) =",
+      body.mainDiamondTotal,
+      "| type:",
+      typeof body.mainDiamondTotal,
+    );
+    console.log(
+      "SIDE TOTAL (raw) =",
+      body.sideDiamondTotal,
+      "| type:",
+      typeof body.sideDiamondTotal,
+    );
 
     console.log("Number(mainDiamondTotal) =", Number(body.mainDiamondTotal));
     console.log("Number(sideDiamondTotal) =", Number(body.sideDiamondTotal));
     console.log("=================================\n");
-
 
     // ❌ Prevent SKU update
     if (body.sku) {
@@ -2170,7 +2116,12 @@ export const updateOrnament = async (req, res) => {
     /* =====================================================
        STEP 3 — UPDATE PRICE FIELDS (BASE + VARIANT)
     ===================================================== */
-    const numericPriceFields = ["price", "originalPrice", "discount", "makingCharges"];
+    const numericPriceFields = [
+      "price",
+      "originalPrice",
+      "discount",
+      "makingCharges",
+    ];
 
     numericPriceFields.forEach((field) => {
       if (body[field] !== undefined) {
@@ -2185,7 +2136,9 @@ export const updateOrnament = async (req, res) => {
       Number(body.originalPrice) > Number(body.price)
     ) {
       updateOps.$set.discount = Math.round(
-        ((Number(body.originalPrice) - Number(body.price)) / Number(body.originalPrice)) * 100
+        ((Number(body.originalPrice) - Number(body.price)) /
+          Number(body.originalPrice)) *
+          100,
       );
     }
 
@@ -2199,40 +2152,32 @@ export const updateOrnament = async (req, res) => {
     // }
 
     if (body.metal) {
-  let parsedMetal = parseJSON(body.metal, existing.metal);
-  parsedMetal = NORMALIZE_METAL(parsedMetal);
-  updateOps.$set.metal = parsedMetal;
-}
-
+      let parsedMetal = parseJSON(body.metal, existing.metal);
+      parsedMetal = NORMALIZE_METAL(parsedMetal);
+      updateOps.$set.metal = parsedMetal;
+    }
 
     // MAIN diamond
     if (body.diamondDetails) {
       updateOps.$set.diamondDetails = parseJSON(
         body.diamondDetails,
-        existing.diamondDetails
+        existing.diamondDetails,
       );
     }
-
-
-
 
     // SIDE diamonds
     if (body.sideDiamondDetails) {
       updateOps.$set.sideDiamondDetails = parseJSON(
         body.sideDiamondDetails,
-        existing.sideDiamondDetails
+        existing.sideDiamondDetails,
       );
     }
-
-
-
-
 
     // GEMSTONES (correct field)
     if (body.stones) {
       updateOps.$set.gemstoneDetails = parseJSON(
         body.stones,
-        existing.gemstoneDetails
+        existing.gemstoneDetails,
       );
     }
 
@@ -2282,11 +2227,11 @@ export const updateOrnament = async (req, res) => {
       //   updateOps.$set.metal = parseJSON(body.metal, existing.metal);
       // }
 
-       if (body.metal) {
-    let parsedMetal = parseJSON(body.metal, existing.metal);
-    parsedMetal = NORMALIZE_METAL(parsedMetal);
-    updateOps.$set.metal = parsedMetal;
-  }
+      if (body.metal) {
+        let parsedMetal = parseJSON(body.metal, existing.metal);
+        parsedMetal = NORMALIZE_METAL(parsedMetal);
+        updateOps.$set.metal = parsedMetal;
+      }
 
       if (body.stones) {
         updateOps.$set.stones = parseJSON(body.stones, existing.stones);
@@ -2312,10 +2257,9 @@ export const updateOrnament = async (req, res) => {
     if (body.makingChargesByCountry) {
       updateOps.$set.makingChargesByCountry = parseJSON(
         body.makingChargesByCountry,
-        existing.makingChargesByCountry
+        existing.makingChargesByCountry,
       );
     }
-
 
     /* =====================================================
        STEP 7 — MEDIA (unified cover + gallery reordering)
@@ -2326,13 +2270,18 @@ export const updateOrnament = async (req, res) => {
       const orderedImages = parseJSON(body.reorderAllImages, []);
       if (Array.isArray(orderedImages) && orderedImages.length > 0) {
         // Validate that all URLs exist in current images to prevent injection
-        const currentAllImages = [existing.coverImage, ...(existing.images || [])].filter(Boolean);
-        const validOrderedImages = orderedImages.filter(url => 
-          currentAllImages.includes(url) || 
-          (req.files?.images && req.files.images.some(f => f.path === url)) ||
-          (req.files?.coverImage && req.files.coverImage[0]?.path === url)
+        const currentAllImages = [
+          existing.coverImage,
+          ...(existing.images || []),
+        ].filter(Boolean);
+        const validOrderedImages = orderedImages.filter(
+          (url) =>
+            currentAllImages.includes(url) ||
+            (req.files?.images &&
+              req.files.images.some((f) => f.path === url)) ||
+            (req.files?.coverImage && req.files.coverImage[0]?.path === url),
         );
-        
+
         if (validOrderedImages.length > 0) {
           // First image becomes cover, rest become gallery
           updateOps.$set.coverImage = validOrderedImages[0];
@@ -2341,7 +2290,7 @@ export const updateOrnament = async (req, res) => {
       }
     } else {
       // Fallback to individual handling if unified reordering not used
-      
+
       // Cover
       if (req.files?.coverImage?.[0]) {
         updateOps.$set.coverImage = req.files.coverImage[0].path;
@@ -2375,9 +2324,11 @@ export const updateOrnament = async (req, res) => {
         const orderedImages = parseJSON(body.reorderImages, []);
         if (Array.isArray(orderedImages)) {
           const currentImages = existing.images || [];
-          const validOrderedImages = orderedImages.filter(url => 
-            currentImages.includes(url) || 
-            (req.files?.images && req.files.images.some(f => f.path === url))
+          const validOrderedImages = orderedImages.filter(
+            (url) =>
+              currentImages.includes(url) ||
+              (req.files?.images &&
+                req.files.images.some((f) => f.path === url)),
           );
           updateOps.$set.images = validOrderedImages;
         }
@@ -2424,8 +2375,6 @@ export const updateOrnament = async (req, res) => {
       }
     }
 
-
-
     /* =====================================================
        STEP 8 — EXECUTE UPDATE
     ===================================================== */
@@ -2449,22 +2398,17 @@ export const updateOrnament = async (req, res) => {
   }
 };
 
-
-
 //  Delete Ornament
 export const deleteOrnament = async (req, res) => {
   try {
     const ornament = await Ornament.findByIdAndDelete(req.params.id);
-    if (!ornament) return res.status(404).json({ message: "Ornament not found" });
+    if (!ornament)
+      return res.status(404).json({ message: "Ornament not found" });
 
     res.status(200).json({ message: "Ornament deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Failed to delete ornament", error: err.message });
+    res
+      .status(500)
+      .json({ message: "Failed to delete ornament", error: err.message });
   }
 };
-
-
-
-
-
-
