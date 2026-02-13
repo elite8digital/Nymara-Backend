@@ -2297,35 +2297,39 @@ if (!ornament.isVariant && ornament.designCode) {
 
 // };
 
-    const convertPrice = (item) => {
+const convertPrice = (item) => {
   const breakdown = calculateBasePrice(item);
 
-  const baseINR = breakdown.baseTotal;
   const rate = selectedCurrency.rate;
   const symbol = selectedCurrency.symbol;
 
-  const displayPrice = baseINR * rate;
+  const baseINR = breakdown.baseTotal;
 
-  const convertedMaking =
-    Number(item.makingCharges || 0) * rate;
+  const metal = breakdown.metalTotal;
+  const diamonds = breakdown.diamondTotal;
+  const gems = breakdown.gemstonesTotal;
 
-  const total = Number(
-    (displayPrice + convertedMaking).toFixed(2)
-  );
+  const making = Number(item.makingCharges || 0);
+
+  const totalINR = metal + diamonds + gems + making;
+
+  const totalConverted = totalINR * rate;
 
   return {
     ...item,
 
-    metalTotal: breakdown.metalTotal,
-    mainDiamondTotal: breakdown.diamondTotal,
-    gemstonesTotal: breakdown.gemstonesTotal,
+    metalTotal: metal,
+    mainDiamondTotal: diamonds,
+    gemstonesTotal: gems,
 
     basePrice: baseINR,
-    displayPrice: total,
-    convertedMakingCharge: convertedMaking,
-    totalConvertedPrice: total,
+    displayPrice: totalConverted,
+    convertedMakingCharge: making * rate,
+    totalConvertedPrice: totalConverted,
     currency: symbol,
   };
+};
+
 };
 
 
@@ -2532,6 +2536,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
