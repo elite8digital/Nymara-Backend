@@ -2328,7 +2328,7 @@ const convertPrice = (item) => {
     totalConvertedPrice: totalConverted,
     currency: symbol,
   };
-};
+
 
 };
 
@@ -2536,6 +2536,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
