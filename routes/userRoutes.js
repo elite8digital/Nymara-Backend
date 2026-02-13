@@ -2244,58 +2244,90 @@ if (!ornament.isVariant && ornament.designCode) {
     //   };
     // };
 
+//     const convertPrice = (item) => {
+//   // 🔥 Get full breakdown object
+//   const breakdown = calculateBasePrice(item);
+
+//   const baseINR = breakdown.baseTotal;
+
+//   const rate = selectedCurrency.rate;
+//   const symbol = selectedCurrency.symbol;
+
+//   const dbPrice = item.prices?.[curr]?.amount;
+//   // const displayPrice =
+//   //   dbPrice !== undefined
+//   //     ? Number(dbPrice)
+//   //     : baseINR * rate;
+
+//     const displayPrice = baseINR * rate;
+
+//   const dbMaking = item.makingChargesByCountry?.[curr]?.amount;
+//   const convertedMaking =
+//     dbMaking !== undefined
+//       ? Number(dbMaking)
+//       : Number(item.makingCharges || 0) * rate;
+
+//   // return {
+//   //   ...item,
+
+//   //   //  Attach breakdown values to response
+//   //   metalTotal: breakdown.metalTotal,
+//   //   mainDiamondTotal: breakdown.diamondTotal,
+//   //   gemstonesTotal: breakdown.gemstonesTotal,
+
+//   //   basePrice: baseINR,
+//   //   displayPrice,
+//   //   convertedMakingCharge: convertedMaking,
+//   //   totalConvertedPrice: displayPrice + convertedMaking,
+//   //   currency: symbol,
+//   // };
+
+//       return {
+//   ...item,
+//   metalTotal: breakdown.metalTotal,
+//   mainDiamondTotal: breakdown.diamondTotal,
+//   gemstonesTotal: breakdown.gemstonesTotal,
+
+//   basePrice: baseINR,
+//   displayPrice,
+//   convertedMakingCharge: convertedMaking,   // ✅ SENT
+//   totalConvertedPrice: displayPrice + convertedMaking,  // ✅ USED
+//   currency: symbol,
+// };
+
+// };
+
     const convertPrice = (item) => {
-  // 🔥 Get full breakdown object
   const breakdown = calculateBasePrice(item);
 
   const baseINR = breakdown.baseTotal;
-
   const rate = selectedCurrency.rate;
   const symbol = selectedCurrency.symbol;
 
-  const dbPrice = item.prices?.[curr]?.amount;
-  // const displayPrice =
-  //   dbPrice !== undefined
-  //     ? Number(dbPrice)
-  //     : baseINR * rate;
+  const displayPrice = baseINR * rate;
 
-    const displayPrice = baseINR * rate;
-
-  const dbMaking = item.makingChargesByCountry?.[curr]?.amount;
   const convertedMaking =
-    dbMaking !== undefined
-      ? Number(dbMaking)
-      : Number(item.makingCharges || 0) * rate;
+    Number(item.makingCharges || 0) * rate;
 
-  // return {
-  //   ...item,
+  const total = Number(
+    (displayPrice + convertedMaking).toFixed(2)
+  );
 
-  //   //  Attach breakdown values to response
-  //   metalTotal: breakdown.metalTotal,
-  //   mainDiamondTotal: breakdown.diamondTotal,
-  //   gemstonesTotal: breakdown.gemstonesTotal,
+  return {
+    ...item,
 
-  //   basePrice: baseINR,
-  //   displayPrice,
-  //   convertedMakingCharge: convertedMaking,
-  //   totalConvertedPrice: displayPrice + convertedMaking,
-  //   currency: symbol,
-  // };
+    metalTotal: breakdown.metalTotal,
+    mainDiamondTotal: breakdown.diamondTotal,
+    gemstonesTotal: breakdown.gemstonesTotal,
 
-      return {
-  ...item,
-  metalTotal: breakdown.metalTotal,
-  mainDiamondTotal: breakdown.diamondTotal,
-  gemstonesTotal: breakdown.gemstonesTotal,
-
-  basePrice: baseINR,
-  displayPrice,
-  convertedMakingCharge: convertedMaking,   // ✅ SENT
-  totalConvertedPrice: displayPrice + convertedMaking,  // ✅ USED
-  currency: symbol,
+    basePrice: baseINR,
+    displayPrice: total,
+    convertedMakingCharge: convertedMaking,
+    totalConvertedPrice: total,
+    currency: symbol,
+  };
 };
 
-};
 
 
     /* ================= VARIANT PRODUCT ================= */
@@ -2500,6 +2532,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
