@@ -2267,20 +2267,34 @@ if (!ornament.isVariant && ornament.designCode) {
       ? Number(dbMaking)
       : Number(item.makingCharges || 0) * rate;
 
-  return {
-    ...item,
+  // return {
+  //   ...item,
 
-    //  Attach breakdown values to response
-    metalTotal: breakdown.metalTotal,
-    mainDiamondTotal: breakdown.diamondTotal,
-    gemstonesTotal: breakdown.gemstonesTotal,
+  //   //  Attach breakdown values to response
+  //   metalTotal: breakdown.metalTotal,
+  //   mainDiamondTotal: breakdown.diamondTotal,
+  //   gemstonesTotal: breakdown.gemstonesTotal,
 
-    basePrice: baseINR,
-    displayPrice,
-    convertedMakingCharge: convertedMaking,
-    totalConvertedPrice: displayPrice + convertedMaking,
-    currency: symbol,
-  };
+  //   basePrice: baseINR,
+  //   displayPrice,
+  //   convertedMakingCharge: convertedMaking,
+  //   totalConvertedPrice: displayPrice + convertedMaking,
+  //   currency: symbol,
+  // };
+
+      return {
+  ...item,
+  metalTotal: breakdown.metalTotal,
+  mainDiamondTotal: breakdown.diamondTotal,
+  gemstonesTotal: breakdown.gemstonesTotal,
+
+  basePrice: baseINR,
+  displayPrice,
+  convertedMakingCharge: convertedMaking,   // ✅ SENT
+  totalConvertedPrice: displayPrice + convertedMaking,  // ✅ USED
+  currency: symbol,
+};
+
 };
 
 
@@ -2486,6 +2500,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
