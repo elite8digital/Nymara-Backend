@@ -372,6 +372,198 @@ const router = express.Router();
 //   }
 // });
 
+// router.get("/ornaments", async (req, res) => {
+//   try {
+//     const {
+//       gender,
+//       category,
+//       subCategory,
+//       search,
+//       sort,
+//       currency = "INR",
+//       includeVariants = "false",
+//     } = req.query;
+
+//     const currencyRates = {
+//       INR: { rate: 1, symbol: "₹" },
+//       USD: { rate: 0.012, symbol: "$" },
+//       GBP: { rate: 0.0095, symbol: "£" },
+//       CAD: { rate: 0.016, symbol: "CA$" },
+//       EUR: { rate: 0.011, symbol: "€" },
+//       AED: { rate: 0.009, symbol: "د.إ" },
+//       AUD: { rate: 0.018, symbol: "A$" },
+//       SGD: { rate: 0.016, symbol: "S$" },
+//       JPY: { rate: 1.8, symbol: "¥" },
+//     };
+
+//     const curr = currency.toUpperCase();
+//     const selectedCurrency = currencyRates[curr] || currencyRates.INR;
+
+//     /* ================= FILTER ================= */
+
+//     let filter = {};
+
+//     if (includeVariants === "false") filter.isVariant = false;
+//     if (gender) filter.gender = new RegExp(gender, "i");
+
+//     if (category) {
+//       const arr = category.split(",");
+//       filter.category = { $in: arr.map((c) => new RegExp(`^${c}$`, "i")) };
+//     }
+
+//     if (subCategory) {
+//       const arr = subCategory.split(",");
+//       filter.subCategory = { $in: arr.map((c) => new RegExp(c, "i")) };
+//     }
+
+//     if (search) {
+//       const regex = new RegExp(search, "i");
+//       filter.$or = [{ name: regex }, { description: regex }];
+//     }
+
+//     /* ================= FETCH PRODUCTS ================= */
+
+//     const mains = await Ornament.find(filter).lean();
+
+//     /* ================= FETCH PRICING ================= */
+
+//     const pricing = await Pricing.findOne();
+//     if (!pricing) {
+//       return res.status(500).json({
+//         success: false,
+//         message: "Pricing not configured",
+//       });
+//     }
+
+//     /* ================= PRICE CALCULATOR ================= */
+
+//     const calculateBasePrice = (item) => {
+//       const weight = Number(item.metal?.weight || 0);
+
+//       let purity =
+//         item.metal?.purity ||
+//         item.metal?.metalType?.match(/(\d{2}K)/)?.[1] ||
+//         null;
+
+//       if (purity) purity = purity.toUpperCase().trim();
+
+//       let metalTotal = 0;
+
+//       if (purity) {
+//         const goldRate = pricing.goldPrices?.get(purity) || 0;
+//         metalTotal = goldRate * weight;
+//       }
+
+//       if (item.metal?.metalType === "Platinum") {
+//         metalTotal =
+//           weight * Number(pricing.platinumPricePerGram || 0);
+//       }
+
+//       if (item.metal?.metalType === "925 Sterling Silver") {
+//         metalTotal =
+//           weight * Number(pricing.silver925PricePerGram || 0);
+//       }
+
+//       const diamondTotal =
+//         Number(item.mainDiamondTotal || 0) +
+//         Number(item.sideDiamondTotal || 0);
+
+//       const gemstonesTotal = (item.gemstoneDetails || []).reduce(
+//         (sum, st) => {
+//           const rate = pricing.gemstonePrices?.[st.stoneType] || 0;
+//           return sum + rate * (st.carat || 0) * (st.count || 1);
+//         },
+//         0
+//       );
+
+//       return metalTotal + diamondTotal + gemstonesTotal;
+//     };
+
+//     /* ================= FETCH VARIANTS ================= */
+
+//     const variantIds = [];
+//     mains.forEach((p) => {
+//       if (!p.isVariant && p.variants) {
+//         Object.values(p.variants).forEach((id) =>
+//           variantIds.push(id)
+//         );
+//       }
+//     });
+
+//     const variants = await Ornament.find({
+//       _id: { $in: variantIds },
+//     }).lean();
+
+//     const variantMap = Object.fromEntries(
+//       variants.map((v) => [v._id.toString(), v])
+//     );
+
+//     /* ================= TRANSFORM OUTPUT ================= */
+
+//     const output = mains
+//       .map((product) => {
+//         if (!product.isVariant) {
+//           const productVariants = Object.values(product.variants || {})
+//             .map((id) => variantMap[id.toString()])
+//             .filter(Boolean)
+//             .map((v) => {
+//               const basePriceINR = calculateBasePrice(v);
+
+//               const rate = selectedCurrency.rate;
+
+//               const convertedBase =
+//                 v.prices?.[curr]?.amount ??
+//                 basePriceINR * rate;
+
+//               const convertedMaking =
+//                 v.makingChargesByCountry?.[curr]?.amount ??
+//                 Number(v.makingCharges || 0) * rate;
+
+//               const total = Number(
+//                 (convertedBase + convertedMaking).toFixed(2)
+//               );
+
+//               return {
+//                 ...v,
+//                 basePrice: basePriceINR,
+//                 displayPrice: total,
+//                 currency: selectedCurrency.symbol,
+//               };
+//             });
+
+//           return {
+//             ...product,
+//             variants: productVariants,
+//             startingPrice:
+//               productVariants.length > 0
+//                 ? Math.min(
+//                     ...productVariants.map(
+//                       (v) => v.displayPrice
+//                     )
+//                   )
+//                 : null,
+//             currency: selectedCurrency.symbol,
+//           };
+//         }
+
+//         return null;
+//       })
+//       .filter(Boolean);
+
+//     res.json({
+//       success: true,
+//       count: output.length,
+//       ornaments: output,
+//     });
+//   } catch (err) {
+//     console.error("❌ Ornament List Error:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: err.message,
+//     });
+//   }
+// });
+
 router.get("/ornaments", async (req, res) => {
   try {
     const {
@@ -437,56 +629,103 @@ router.get("/ornaments", async (req, res) => {
 
     /* ================= PRICE CALCULATOR ================= */
 
+    // const calculateBasePrice = (item) => {
+    //   const weight = Number(item.metal?.weight || 0);
+
+    //   let purity =
+    //     item.metal?.purity ||
+    //     item.metal?.metalType?.match(/(\d{2}K)/)?.[1] ||
+    //     null;
+
+    //   if (purity) purity = purity.toUpperCase().trim();
+
+    //   let metalTotal = 0;
+
+    //   if (purity) {
+    //     const goldRate =
+    //       pricing.goldPrices?.get?.(purity) ||
+    //       pricing.goldPrices?.[purity] ||
+    //       0;
+
+    //     metalTotal = goldRate * weight;
+    //   }
+
+    //   if (item.metal?.metalType === "Platinum") {
+    //     metalTotal = weight * Number(pricing.platinumPricePerGram || 0);
+    //   }
+
+    //   if (item.metal?.metalType === "925 Sterling Silver") {
+    //     metalTotal = weight * Number(pricing.silver925PricePerGram || 0);
+    //   }
+
+    //   const diamondTotal =
+    //     Number(item.mainDiamondTotal || 0) + Number(item.sideDiamondTotal || 0);
+
+    //   const gemstonesTotal = (item.gemstoneDetails || []).reduce((sum, st) => {
+    //     const rate = pricing.gemstonePrices?.[st.stoneType] || 0;
+    //     return sum + rate * (st.carat || 0) * (st.count || 1);
+    //   }, 0);
+
+    //   return metalTotal + diamondTotal + gemstonesTotal;
+    // };
+
     const calculateBasePrice = (item) => {
-      const weight = Number(item.metal?.weight || 0);
+  const weight = Number(item.metal?.weight || 0);
 
-      let purity =
-        item.metal?.purity ||
-        item.metal?.metalType?.match(/(\d{2}K)/)?.[1] ||
-        null;
+  let purity =
+    item.metal?.purity ||
+    item.metal?.metalType?.match(/(\d{2}K)/)?.[1] ||
+    null;
 
-      if (purity) purity = purity.toUpperCase().trim();
+  if (purity) purity = purity.toUpperCase().trim();
 
-      let metalTotal = 0;
+  let metalTotal = 0;
 
-      if (purity) {
-        const goldRate = pricing.goldPrices?.get(purity) || 0;
-        metalTotal = goldRate * weight;
-      }
+  if (purity) {
+    const goldRate =
+      pricing.goldPrices?.get?.(purity) ||
+      pricing.goldPrices?.[purity] ||
+      0;
 
-      if (item.metal?.metalType === "Platinum") {
-        metalTotal =
-          weight * Number(pricing.platinumPricePerGram || 0);
-      }
+  
+    metalTotal = goldRate * weight;
+   
+  }
 
-      if (item.metal?.metalType === "925 Sterling Silver") {
-        metalTotal =
-          weight * Number(pricing.silver925PricePerGram || 0);
-      }
+  if (item.metal?.metalType === "Platinum") {
+    metalTotal = weight * Number(pricing.platinumPricePerGram || 0);
+  }
 
-      const diamondTotal =
-        Number(item.mainDiamondTotal || 0) +
-        Number(item.sideDiamondTotal || 0);
+  if (item.metal?.metalType === "925 Sterling Silver") {
+    metalTotal = weight * Number(pricing.silver925PricePerGram || 0);
+  }
 
-      const gemstonesTotal = (item.gemstoneDetails || []).reduce(
-        (sum, st) => {
-          const rate = pricing.gemstonePrices?.[st.stoneType] || 0;
-          return sum + rate * (st.carat || 0) * (st.count || 1);
-        },
-        0
-      );
+  const diamondTotal =
+    Number(item.mainDiamondTotal || 0) +
+    Number(item.sideDiamondTotal || 0);
 
-      return metalTotal + diamondTotal + gemstonesTotal;
-    };
+  const gemstonesTotal = (item.gemstoneDetails || []).reduce(
+    (sum, st) => {
+      const rate = pricing.gemstonePrices?.[st.stoneType] || 0;
+      return sum + rate * (st.carat || 0) * (st.count || 1);
+    },
+    0
+  );
+
+
+  const base = metalTotal + diamondTotal + gemstonesTotal;
+
+
+  return base;
+};
+
 
     /* ================= FETCH VARIANTS ================= */
 
     const variantIds = [];
     mains.forEach((p) => {
       if (!p.isVariant && p.variants) {
-        Object.values(p.variants).forEach((id) =>
-          variantIds.push(id)
-        );
+        Object.values(p.variants).forEach((id) => variantIds.push(id));
       }
     });
 
@@ -495,7 +734,7 @@ router.get("/ornaments", async (req, res) => {
     }).lean();
 
     const variantMap = Object.fromEntries(
-      variants.map((v) => [v._id.toString(), v])
+      variants.map((v) => [v._id.toString(), v]),
     );
 
     /* ================= TRANSFORM OUTPUT ================= */
@@ -511,16 +750,15 @@ router.get("/ornaments", async (req, res) => {
 
               const rate = selectedCurrency.rate;
 
-              const convertedBase =
-                v.prices?.[curr]?.amount ??
-                basePriceINR * rate;
+              const convertedBase = basePriceINR * rate;
+
 
               const convertedMaking =
                 v.makingChargesByCountry?.[curr]?.amount ??
                 Number(v.makingCharges || 0) * rate;
 
               const total = Number(
-                (convertedBase + convertedMaking).toFixed(2)
+                (convertedBase + convertedMaking).toFixed(2),
               );
 
               return {
@@ -531,18 +769,46 @@ router.get("/ornaments", async (req, res) => {
               };
             });
 
+          // return {
+          //   ...product,
+          //   variants: productVariants,
+          //   startingPrice:
+          //     productVariants.length > 0
+          //       ? Math.min(...productVariants.map((v) => v.displayPrice))
+          //       : null,
+          //   currency: selectedCurrency.symbol,
+          // };
+
+          // 🔥 Calculate MAIN product price
+          const basePriceINR = calculateBasePrice(product);
+
+          const rate = selectedCurrency.rate;
+
+          const convertedBase = basePriceINR * rate;
+
+
+          const convertedMaking =
+            product.makingChargesByCountry?.[curr]?.amount ??
+            Number(product.makingCharges || 0) * rate;
+
+          const total = Number((convertedBase + convertedMaking).toFixed(2));
+
           return {
             ...product,
+
+            // ✅ Add dynamic pricing fields
+            basePrice: basePriceINR,
+            displayPrice: total,
+            convertedMakingCharge: convertedMaking,
+            totalConvertedPrice: total,
+            currency: selectedCurrency.symbol,
+
             variants: productVariants,
+
             startingPrice:
               productVariants.length > 0
-                ? Math.min(
-                    ...productVariants.map(
-                      (v) => v.displayPrice
-                    )
-                  )
+                ? Math.min(...productVariants.map((v) => v.displayPrice))
                 : null,
-            currency: selectedCurrency.symbol,
           };
         }
 
@@ -563,6 +829,7 @@ router.get("/ornaments", async (req, res) => {
     });
   }
 });
+
 
 
 
@@ -2536,6 +2803,7 @@ router.post("/inquiry", async (req, res) => {
 
 
 export default router;
+
 
 
 
