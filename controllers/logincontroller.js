@@ -26,7 +26,10 @@ export const login = async (req, res) => {
     // ---------------------------
     // 🔹 1. Check Admin first
     // ---------------------------
-    const admin = await AdminModel.findOne({ email });
+    // const admin = await AdminModel.findOne({ email });
+    // 🔹 1. Check Admin first
+const admin = await AdminModel.findOne({ email }).select("+password");
+
     if (admin) {
       const isMatch = await bcrypt.compare(password, admin.password);
       if (!isMatch) return res.status(401).json({ message: "Incorrect password" });
@@ -53,7 +56,10 @@ export const login = async (req, res) => {
     // ---------------------------
     // 🔹 2. Check User
     // ---------------------------
-    const user = await UserModel.findOne({ email });
+    // const user = await UserModel.findOne({ email });
+    // 🔹 2. Check User
+const user = await UserModel.findOne({ email }).select("+password");
+
     if (!user) {
       return res
         .status(404)

@@ -4,7 +4,7 @@ import Ornament from "../models/Ornament.js";
 import { protect } from "../middleware/authMiddleware.js";
 import { saveUserDetails, getUserDetails } from "../controllers/userDetailsController.js";
 import { currencyRates } from "../config/currencyRates.js";
-import { forgetPassword, resetPassword } from "../emailer/password.js";
+import { forgetPassword, resetPassword } from "../controllers/cartController.js"
 import CustomRequest from "../models/CustomRequest.js";
 import sendEmail from "../emailer/sendEmail.js";
 import Pricing from "../models/Pricing.js"; 
@@ -2702,7 +2702,7 @@ router.post("/details", protect, saveUserDetails);
 router.get("/details", protect, getUserDetails);
 
 router.post("/forgetpassword", forgetPassword);
-router.put("/reset-password/:token", resetPassword);
+router.put("/resetpassword/:token", resetPassword);  // ✅ Match frontend path
 
 router.post("/custom", async (req, res) => {
   try {

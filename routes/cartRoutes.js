@@ -9,6 +9,7 @@ import {
   getUserCart,
   updateUserCartItem,
   removeUserCartItem,
+
 } from "../controllers/cartController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -19,7 +20,7 @@ router.post("/guest/init", initGuestCart);                 // create guestId
 router.post("/guest/add", addToGuestCart);                 // add to guest cart
 router.get("/guest/:guestId", getGuestCart);               // get guest cart
 router.delete("/guest/remove/:guestId/:ornamentId", removeGuestCartItem);
-
+// router.put("/api/user/resetpassword/:token",resetPassword);
 
 router.post("/user/add", protect, addToUserCart);          // add to logged-in user's cart
 router.get("/user", protect, getUserCart);                 // get user's cart
