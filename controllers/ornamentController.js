@@ -2160,6 +2160,7 @@ export const updateOrnament = async (req, res) => {
       "stock",
       "color",
       "size",
+      "rating", 
       "variantLabel",
     ];
 
@@ -2202,6 +2203,10 @@ export const updateOrnament = async (req, res) => {
   let parsedMetal = parseJSON(body.metal, existing.metal);
   parsedMetal = NORMALIZE_METAL(parsedMetal);
   updateOps.$set.metal = parsedMetal;
+}
+
+      if (body.rating !== undefined) {
+  updateOps.$set.rating = Number(body.rating);
 }
 
 
@@ -2301,6 +2306,9 @@ export const updateOrnament = async (req, res) => {
         updateOps.$set.variants = parseJSON(body.variants, existing.variants);
       }
     }
+
+
+  
 
     /* =====================================================
        STEP 7 — PRICES & MAKING CHARGES (BASE + VARIANT)
@@ -2462,6 +2470,7 @@ export const deleteOrnament = async (req, res) => {
     res.status(500).json({ message: "Failed to delete ornament", error: err.message });
   }
 };
+
 
 
 
