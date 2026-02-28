@@ -22,6 +22,7 @@ import chatRoutes from "./routes/chatRoutes.js";
 import trackingRoutes from "./routes/trackingRoutes.js";
 import  {geoMiddleware}  from "./middleware/geoMiddleware.js";
 import contactRoutes from "./routes//sizeRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
 
 
 import bcrypt from "bcryptjs";
@@ -91,6 +92,7 @@ app.use("/api/appointments", appointments);
 app.use("/api/chat",chatRoutes);
 app.use("/api/tracking", trackingRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/payments", paymentRoutes);
 
 
 
@@ -101,5 +103,6 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`hi Server running on port ${PORT}`);
 });
+
 
 
