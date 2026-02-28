@@ -12,8 +12,12 @@ const generateToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: "3
 
 export const signup = async (req, res) => {
   try {
+
+
     // 🔹 Extract data from request body
     const { name, email, phoneNumber, password, guestId } = req.body;
+    
+ 
 
     // 🔹 Validate required fields
     if (!name || !email || !phoneNumber || !password) {

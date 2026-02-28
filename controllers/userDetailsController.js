@@ -11,6 +11,7 @@ export const saveUserDetails = async (req, res) => {
 
     const { firstName, lastName, email, phoneNumber, address } = req.body;
 
+
     // 🔹 Validate
     if (!phoneNumber) {
       return res.status(400).json({ success: false, message: "Phone number is required" });
@@ -18,6 +19,8 @@ export const saveUserDetails = async (req, res) => {
     if (!address || typeof address !== "object") {
       return res.status(400).json({ success: false, message: "Address must be an object" });
     }
+
+   
 
     // 🔹 Update User (basic info)
     const name = [firstName, lastName].filter(Boolean).join(" ");
