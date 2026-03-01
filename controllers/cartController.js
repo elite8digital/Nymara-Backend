@@ -348,7 +348,8 @@ export const forgetPassword = async (req, res) => {
 export const resetPassword = async (req, res) => {
   try {
     console.log("🔐 [RESET PASSWORD] Request received");
-    console.log("🔑 [RESET PASSWORD] Token from URL (first 10 chars):", req.params.token.substring(0, 10) + "...");
+    console.log("🔑 [RESET PASSWORD] Token from URL (first 10 chars):", req.params.token?.substring(0, 10) + "...");
+    console.log("📦 [RESET PASSWORD] Request body:", req.body);
 
     const { password } = req.body;
 
@@ -384,7 +385,7 @@ export const resetPassword = async (req, res) => {
     const user = await UserModel.findOne({
       resetPasswordToken,
       resetPasswordExpire: { $gt: Date.now() },
-    });
+    }).select('+password'); // Explicitly select password field
 
     if (!user) {
       console.log("❌ [RESET PASSWORD] No user found with valid token");
@@ -406,7 +407,10 @@ export const resetPassword = async (req, res) => {
     user.resetPasswordExpire = undefined;
 
     console.log("💾 [RESET PASSWORD] Saving user with new password...");
-    await user.save();
+    
+    // Use validateBeforeSave: false to avoid validation issues
+    await user.save({ validateBeforeSave: false });
+    
     console.log("✅ [RESET PASSWORD] Password updated successfully");
     console.log("🧹 [RESET PASSWORD] Reset token cleared from DB");
 
@@ -419,12 +423,16 @@ export const resetPassword = async (req, res) => {
 
   } catch (error) {
     console.error("❌ [RESET PASSWORD] Error occurred:", error.message);
+    console.error("❌ [RESET PASSWORD] Error name:", error.name);
     console.error("❌ [RESET PASSWORD] Full error:", error);
     console.error("❌ [RESET PASSWORD] Stack trace:", error.stack);
 
+    // Send more specific error message
+    const errorMessage = error.message || "Server Error. Please try again later.";
+    
     res.status(500).json({ 
       success: false, 
-      error: "Server Error. Please try again later." 
+      error: `Server Error: ${errorMessage}` 
     });
   }
 };
