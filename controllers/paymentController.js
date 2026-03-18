@@ -205,7 +205,7 @@ export const createRazorpayOrder = async (req, res) => {
     
     // Check if amount exceeds Razorpay test mode limit (5 lakhs)
     const isTestMode = process.env.RAZORPAY_KEY_ID?.startsWith('rzp_test_');
-    const maxTestAmount = 500000; // 5 lakhs in INR
+    const maxTestAmount = 8000000; // 5 lakhs in INR
     
     if (isTestMode && currency === 'INR' && totalAmount > maxTestAmount) {
       console.warn(`⚠️ [BACKEND] Amount ${totalAmount} exceeds test mode limit of ${maxTestAmount}`);
