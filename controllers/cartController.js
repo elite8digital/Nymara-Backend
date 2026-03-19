@@ -369,7 +369,8 @@ export const forgetPassword = async (req, res) => {
     const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
 
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    // const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+     const resetUrl = `https://nymarajewels.com/reset-password/${resetToken}`;
 
     console.log("🔗 Reset URL:", resetUrl);
 
