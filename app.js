@@ -23,6 +23,7 @@ import trackingRoutes from "./routes/trackingRoutes.js";
 import  {geoMiddleware}  from "./middleware/geoMiddleware.js";
 import contactRoutes from "./routes//sizeRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import orderRoutes from "./routes/orderRoutes.js";
 
 
 import bcrypt from "bcryptjs";
@@ -93,6 +94,7 @@ app.use("/api/chat",chatRoutes);
 app.use("/api/tracking", trackingRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/payments", paymentRoutes);
+app.use("/api/orders", orderRoutes);
 
 
 

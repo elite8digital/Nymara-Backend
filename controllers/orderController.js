@@ -193,8 +193,11 @@ export const updatePayment = async (req, res) => {
 // 👤 Get all orders for logged-in user
 export const getMyOrders = async (req, res) => {
   try {
-    const orders = await UserOrder.find({ userId: req.user._id }).sort({ createdAt: -1 });
-    res.json(orders);
+    const userId = req.user.id || req.user._id;
+    const orders = await UserOrder.find({ userId })
+      .populate("products.productId", "name coverImage")
+      .sort({ createdAt: -1 });
+    res.json({ success: true, orders });
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
     res.status(500).json({ success: false, message: "Server error" });
