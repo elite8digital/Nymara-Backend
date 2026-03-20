@@ -1,20 +1,21 @@
+
 // import User from "../models/User.js";
 // import UserDetails from "../models/UserDetails.js";
 // import UserOrder from "../models/UserOrder.js";
 // import Ornament from "../models/Ornament.js";
-// import { currencyRates } from "../config/currencyRates.js"; // ✅ Currency conversion rates
+// import { currencyRates } from "../config/currencyRates.js"; //  Currency conversion rates
 
 // // 🔹 Helper to resolve price for selected currency
 // const getPriceForCurrency = (ornament, currency = "INR") => {
 //   let finalPrice, symbol;
 
-//   // ✅ If product already has stored prices (multi-currency in DB)
+//   //  If product already has stored prices (multi-currency in DB)
 //   if (ornament?.prices && ornament.prices.has(currency.toUpperCase())) {
 //     const priceObj = ornament.prices.get(currency.toUpperCase());
 //     finalPrice = priceObj.amount;
 //     symbol = priceObj.symbol;
 //   } else {
-//     // ✅ Otherwise fallback → convert INR price using currencyRates config
+//     //  Otherwise fallback → convert INR price using currencyRates config
 //     const selectedCurrency =
 //       currencyRates[currency.toUpperCase()] || currencyRates["INR"];
 //     finalPrice = ornament?.price * selectedCurrency.rate;
@@ -78,13 +79,13 @@
 //   }
 // };
 
-// // 👤 Get all orders for a specific customer
+// //  Get all orders for a specific customer
 // export const getCustomerOrders = async (req, res) => {
 //   try {
 //     const { userId } = req.params;
 //     const { currency = "INR" } = req.query;
 
-//     // ⚠️ FIX: In your UserOrder schema it's `products`, not `items`
+//     //  FIX: In your UserOrder schema it's `products`, not `items`
 //     const orders = await UserOrder.find({ userId })
 //       .populate("products.productId", "name price prices images type category subCategory") 
 //       .select("oId totalAmount products orderDate status paymentStatus");
@@ -121,14 +122,11 @@
 //   }
 // };
 
-// // 📦 Get all orders (admin dashboard)
+// //  Get all orders (admin dashboard)
 // export const getAllOrders = async (req, res) => {
 //   try {
-//     const { currency = "INR" } = req.query;
-
 //     const orders = await UserOrder.find()
 //       .populate("userId", "uId name email")
-//       .populate("products.productId", "sku name type category subCategory price prices")
 //       .sort({ createdAt: -1 });
 
 //     const formattedOrders = orders.map((order) => ({
@@ -140,11 +138,10 @@
 //         email: order.userId?.email,
 //       },
 //       items: order.products.length,
-//       amount: order.products.reduce((acc, p) => {
-//         const priceInfo = getPriceForCurrency(p.productId, currency);
-//         return acc + priceInfo.displayPrice * p.quantity;
-//       }, 0),
+//       amount: order.totalAmount?.amount ?? 0,
+//       currency: order.totalAmount?.symbol ?? "₹",
 //       status: order.status,
+//       paymentStatus: order.paymentStatus,
 //       city: order.deliveryAddress?.city || "Not Provided",
 //       state: order.deliveryAddress?.state || "Not Provided",
 //     }));
@@ -159,15 +156,13 @@
 //   }
 // };
 
-// // 📄 Get single order details (admin view)
+// //  Get single order details (admin view)
 // export const getOrderDetails = async (req, res) => {
 //   try {
 //     const { orderId } = req.params;
-//     const { currency = "INR" } = req.query;
 
 //     const order = await UserOrder.findOne({ oId: orderId })
 //       .populate("userId", "uId name email")
-//       .populate("products.productId", "sku name type category subCategory price prices")
 //       .lean();
 
 //     if (!order) {
@@ -186,20 +181,15 @@
 //       razorpayPaymentId: order.razorpayPaymentId,
 //       deliveryLink: order.deliveryLink,
 
-//       orderItems: order.products.map((p) => {
-//         const priceInfo = getPriceForCurrency(p.productId, currency);
-//         return {
-//           productId: p.productId?._id,
-//           productSKU: p.productId?.sku,
-//           productName: p.productId?.name,
-//           type: p.productId?.type,
-//           category: p.productId?.category || [],
-//           subCategory: p.productId?.subCategory || [],
-//           quantity: p.quantity,
-//           ...priceInfo,
-//           total: priceInfo.displayPrice * p.quantity,
-//         };
-//       }),
+//       orderItems: order.products.map((p) => ({
+//         productId: p.productId,
+//         productSKU: p.variant || "",
+//         productName: p.productId?.name || "Product",
+//         quantity: p.quantity,
+//         displayPrice: p.price?.amount ?? 0,
+//         currency: p.price?.symbol ?? "₹",
+//         total: (p.price?.amount ?? 0) * p.quantity,
+//       })),
 
 //       customer: {
 //         customerId: order.userId.uId,
@@ -212,11 +202,8 @@
 
 //       orderSummary: {
 //         totalItems: order.products.length,
-//         totalAmount: order.products.reduce((acc, p) => {
-//           const priceInfo = getPriceForCurrency(p.productId, currency);
-//           return acc + priceInfo.displayPrice * p.quantity;
-//         }, 0),
-//         currency,
+//         totalAmount: order.totalAmount?.amount ?? 0,
+//         currency: order.totalAmount?.symbol ?? "₹",
 //       },
 //     };
 
@@ -230,7 +217,7 @@
 //   }
 // };
 
-// // 🚚 Update order status (admin)
+// //  Update order status (admin)
 // export const updateOrderStatus = async (req, res) => {
 //   try {
 //     const { oId } = req.params;
@@ -251,7 +238,7 @@
 //   }
 // };
 
-// // 💰 Handle refunds (admin)
+// //  Handle refunds (admin)
 // export const handleRefund = async (req, res) => {
 //   try {
 //     const { oId } = req.params;
@@ -263,7 +250,7 @@
 //     if (refundAmount !== undefined) order.refundAmount = refundAmount;
 //     if (refundStatus) order.refundStatus = refundStatus;
 
-//     // ✅ If refund is processed, mark payment as Refunded
+//     //  If refund is processed, mark payment as Refunded
 //     if (refundStatus === "processed") {
 //       order.paymentStatus = "Refunded";
 //     }
@@ -281,19 +268,19 @@ import User from "../models/User.js";
 import UserDetails from "../models/UserDetails.js";
 import UserOrder from "../models/UserOrder.js";
 import Ornament from "../models/Ornament.js";
-import { currencyRates } from "../config/currencyRates.js"; //  Currency conversion rates
+import { currencyRates } from "../config/currencyRates.js"; // ✅ Currency conversion rates
 
 // 🔹 Helper to resolve price for selected currency
 const getPriceForCurrency = (ornament, currency = "INR") => {
   let finalPrice, symbol;
 
-  //  If product already has stored prices (multi-currency in DB)
+  // ✅ If product already has stored prices (multi-currency in DB)
   if (ornament?.prices && ornament.prices.has(currency.toUpperCase())) {
     const priceObj = ornament.prices.get(currency.toUpperCase());
     finalPrice = priceObj.amount;
     symbol = priceObj.symbol;
   } else {
-    //  Otherwise fallback → convert INR price using currencyRates config
+    // ✅ Otherwise fallback → convert INR price using currencyRates config
     const selectedCurrency =
       currencyRates[currency.toUpperCase()] || currencyRates["INR"];
     finalPrice = ornament?.price * selectedCurrency.rate;
@@ -310,25 +297,16 @@ const getPriceForCurrency = (ornament, currency = "INR") => {
 // 👤 Get summary of all customers (with order counts)
 export const getCustomersSummary = async (req, res) => {
   try {
-    // Fetch all non-admin users
-    const users = await User.find({ isAdmin: false }).select("uId name email");
+    const users = await User.find({ isAdmin: false }).select("uId name email phoneNumber");
 
-    // Fetch details (phone numbers etc.)
     const userDetails = await UserDetails.find({
       userId: { $in: users.map((u) => u._id) },
-    }).select("userId phoneNumber");
+    }).select("userId address");
 
-    // Aggregate order counts for each user
     const orders = await UserOrder.aggregate([
-      {
-        $group: {
-          _id: "$userId",
-          orderCount: { $sum: 1 },
-        },
-      },
+      { $group: { _id: "$userId", orderCount: { $sum: 1 } } },
     ]);
 
-    // Build summary response
     const result = users.map((user) => {
       const detail = userDetails.find(
         (d) => d.userId.toString() === user._id.toString()
@@ -337,13 +315,19 @@ export const getCustomersSummary = async (req, res) => {
         (o) => o._id.toString() === user._id.toString()
       );
 
+      const addr = detail?.address || {};
+      const city = addr.city || addr.cityInternational || "";
+      const state = addr.state || addr.stateProvince || "";
+
       return {
         _id: user._id,
         customerId: user.uId,
         name: user.name,
         email: user.email,
-        phoneNumber: detail ? detail.phoneNumber : null,
+        phoneNumber: user.phoneNumber || null,
         orderCount: orderInfo ? orderInfo.orderCount : 0,
+        city,
+        state,
       };
     });
 
@@ -357,37 +341,23 @@ export const getCustomersSummary = async (req, res) => {
   }
 };
 
-//  Get all orders for a specific customer
+// 👤 Get all orders for a specific customer
 export const getCustomerOrders = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { currency = "INR" } = req.query;
 
-    //  FIX: In your UserOrder schema it's `products`, not `items`
     const orders = await UserOrder.find({ userId })
-      .populate("products.productId", "name price prices images type category subCategory") 
-      .select("oId totalAmount products orderDate status paymentStatus");
+      .select("oId totalAmount products orderDate status paymentStatus deliveryAddress")
+      .lean();
 
     const formatted = orders.map((order) => ({
       orderId: order.oId,
-      totalAmount: order.totalAmount,
+      totalAmount: order.totalAmount?.amount ?? 0,
+      currency: order.totalAmount?.symbol ?? "₹",
       itemCount: order.products.length,
       status: order.status,
       paymentStatus: order.paymentStatus,
       orderDate: order.orderDate,
-      items: order.products.map((p) => {
-        const priceInfo = getPriceForCurrency(p.productId, currency);
-        return {
-          ornamentId: p.productId?._id,
-          name: p.productId?.name,
-          type: p.productId?.type,
-          category: p.productId?.category || [],
-          subCategory: p.productId?.subCategory || [],
-          ...priceInfo,
-          quantity: p.quantity,
-          total: priceInfo.displayPrice * p.quantity,
-        };
-      }),
     }));
 
     res.json({ success: true, orders: formatted });
@@ -400,7 +370,7 @@ export const getCustomerOrders = async (req, res) => {
   }
 };
 
-//  Get all orders (admin dashboard)
+// 📦 Get all orders (admin dashboard)
 export const getAllOrders = async (req, res) => {
   try {
     const orders = await UserOrder.find()
@@ -434,7 +404,7 @@ export const getAllOrders = async (req, res) => {
   }
 };
 
-//  Get single order details (admin view)
+// 📄 Get single order details (admin view)
 export const getOrderDetails = async (req, res) => {
   try {
     const { orderId } = req.params;
@@ -495,7 +465,7 @@ export const getOrderDetails = async (req, res) => {
   }
 };
 
-//  Update order status (admin)
+// 🚚 Update order status (admin)
 export const updateOrderStatus = async (req, res) => {
   try {
     const { oId } = req.params;
@@ -516,7 +486,7 @@ export const updateOrderStatus = async (req, res) => {
   }
 };
 
-//  Handle refunds (admin)
+// 💰 Handle refunds (admin)
 export const handleRefund = async (req, res) => {
   try {
     const { oId } = req.params;
@@ -528,7 +498,7 @@ export const handleRefund = async (req, res) => {
     if (refundAmount !== undefined) order.refundAmount = refundAmount;
     if (refundStatus) order.refundStatus = refundStatus;
 
-    //  If refund is processed, mark payment as Refunded
+    // ✅ If refund is processed, mark payment as Refunded
     if (refundStatus === "processed") {
       order.paymentStatus = "Refunded";
     }
@@ -541,4 +511,5 @@ export const handleRefund = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
