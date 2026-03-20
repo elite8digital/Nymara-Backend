@@ -1,55 +1,212 @@
+// import TrackingLog from "../models/TrackingLog.js";
+// import UserOrder from "../models/UserOrder.js";
+// import Ornament from "../models/Ornament.js";
+
+// export const getAnalyticsSummary = async (req, res) => {
+//   try {
+//     const { range = "30" } = req.query; // default 30 days
+//     const days = parseInt(range, 10);
+//     const startDate = new Date();
+//     startDate.setDate(startDate.getDate() - days);
+
+//     // Unique visitors
+//     const uniqueVisitors = await TrackingLog.distinct("sessionId", {
+//       event: "visit",
+//       timestamp: { $gte: startDate },
+//     });
+
+//     // Cart adds
+//     const cartAdds = await TrackingLog.countDocuments({
+//       event: "add_to_cart",
+//       timestamp: { $gte: startDate },
+//     });
+
+//     // Purchases
+//     const purchases = await TrackingLog.countDocuments({
+//       event: "purchase",
+//       timestamp: { $gte: startDate },
+//     });
+
+//     // Conversion rate
+//     const conversionRate =
+//       cartAdds > 0 ? ((purchases / cartAdds) * 100).toFixed(2) : "0.00";
+
+//     // Top products (resolve product names)
+//     const topProductsRaw = await TrackingLog.aggregate([
+//       { $match: { event: "add_to_cart", timestamp: { $gte: startDate } } },
+//       { $group: { _id: "$productId", count: { $sum: 1 } } },
+//       { $sort: { count: -1 } },
+//       { $limit: 5 },
+//     ]);
+
+//     const topProducts = await Ornament.find({
+//       _id: { $in: topProductsRaw.map((p) => p._id) },
+//     }).select("name");
+
+//     const topProductsMapped = topProductsRaw.map((p) => {
+//       const prod = topProducts.find((o) => o._id.toString() === p._id.toString());
+//       return { _id: prod?.name || "Unknown", count: p.count };
+//     });
+
+//     // Average order value (AOV)
+//     const orders = await UserOrder.aggregate([
+//       {
+//         $match: {
+//           createdAt: { $gte: startDate },
+//           paymentStatus: "Paid",
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: null,
+//           totalRevenue: {
+//             $sum: {
+//               $cond: [
+//                 { $isNumber: "$totalAmount" },
+//                 "$totalAmount",
+//                 "$totalAmount.amount",
+//               ],
+//             },
+//           },
+//           totalOrders: { $sum: 1 },
+//         },
+//       },
+//     ]);
+
+//     const avgOrderValue =
+//       orders.length > 0
+//         ? (orders[0].totalRevenue / orders[0].totalOrders).toFixed(2)
+//         : "0.00";
+
+//     // 📊 Daily Stats (visits & purchases grouped by day)
+//     const dailyStatsRaw = await TrackingLog.aggregate([
+//       { $match: { timestamp: { $gte: startDate }, event: { $in: ["visit", "purchase"] } } },
+//       {
+//         $group: {
+//           _id: {
+//             day: { $dayOfMonth: "$timestamp" },
+//             month: { $month: "$timestamp" },
+//             year: { $year: "$timestamp" },
+//             event: "$event",
+//           },
+//           count: { $sum: 1 },
+//         },
+//       },
+//       {
+//         $group: {
+//           _id: { day: "$_id.day", month: "$_id.month", year: "$_id.year" },
+//           stats: { $push: { event: "$_id.event", count: "$count" } },
+//         },
+//       },
+//       { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+//     ]);
+
+//     // 🌍 Country-based visitor stats
+// const countryStatsRaw = await TrackingLog.aggregate([
+//   { 
+//     $match: { 
+//       event: "visit",
+//       timestamp: { $gte: startDate },
+//       country: { $exists: true, $ne: "" }
+//     } 
+//   },
+//   { $group: { _id: "$country", visits: { $sum: 1 } } },
+//   { $sort: { visits: -1 } },
+//   { $limit: 10 },
+// ]);
+
+// const countryStats = countryStatsRaw.map((c) => ({
+//   country: c._id,
+//   visits: c.visits,
+// }));
+
+
+//     // Transform to { date, visits, purchases }
+//     const dailyStats = dailyStatsRaw.map((d) => {
+//       const dateKey = `${d._id.year}-${String(d._id.month).padStart(2, "0")}-${String(
+//         d._id.day
+//       ).padStart(2, "0")}`;
+//       const visits = d.stats.find((s) => s.event === "visit")?.count || 0;
+//       const purchases = d.stats.find((s) => s.event === "purchase")?.count || 0;
+//       return { date: dateKey, visits, purchases };
+//     });
+
+//     res.json({
+//       success: true,
+//       summary: {
+//         visitors: uniqueVisitors.length,
+//         cartAdds,
+//         purchases,
+//         conversionRate,
+//         avgOrderValue,
+//         topProducts: topProductsMapped,
+//         dailyStats, // ✅ now included for line chart
+//         countryStats, // ✅ included for country-wise stats
+//         range: `${days} days`,
+//       },
+//     });
+//   } catch (err) {
+//     console.error("❌ Analytics error:", err);
+//     res.status(500).json({
+//       success: false,
+//       message: "Analytics fetch failed",
+//       error: err.message,
+//     });
+//   }
+// };
+
 import TrackingLog from "../models/TrackingLog.js";
 import UserOrder from "../models/UserOrder.js";
 import Ornament from "../models/Ornament.js";
 
 export const getAnalyticsSummary = async (req, res) => {
   try {
-    const { range = "30" } = req.query; // default 30 days
+    const { range = "30", mode = "daily" } = req.query;
     const days = parseInt(range, 10);
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    // Unique visitors
+    // ── Unique visitors ──────────────────────────────────────────────
     const uniqueVisitors = await TrackingLog.distinct("sessionId", {
       event: "visit",
-      timestamp: { $gte: startDate },
+      eventTimestamp: { $gte: startDate },
     });
 
-    // Cart adds
+    // ── Cart adds ────────────────────────────────────────────────────
     const cartAdds = await TrackingLog.countDocuments({
       event: "add_to_cart",
-      timestamp: { $gte: startDate },
+      eventTimestamp: { $gte: startDate },
     });
 
-    // Purchases
+    // ── Purchases ────────────────────────────────────────────────────
     const purchases = await TrackingLog.countDocuments({
       event: "purchase",
-      timestamp: { $gte: startDate },
+      eventTimestamp: { $gte: startDate },
     });
 
-    // Conversion rate
+    // ── Conversion rate ──────────────────────────────────────────────
     const conversionRate =
       cartAdds > 0 ? ((purchases / cartAdds) * 100).toFixed(2) : "0.00";
 
-    // Top products (resolve product names)
+    // ── Top 5 products ───────────────────────────────────────────────
     const topProductsRaw = await TrackingLog.aggregate([
-      { $match: { event: "add_to_cart", timestamp: { $gte: startDate } } },
+      { $match: { event: "add_to_cart", eventTimestamp: { $gte: startDate } } },
       { $group: { _id: "$productId", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 5 },
     ]);
 
-    const topProducts = await Ornament.find({
+    const ornaments = await Ornament.find({
       _id: { $in: topProductsRaw.map((p) => p._id) },
     }).select("name");
 
-    const topProductsMapped = topProductsRaw.map((p) => {
-      const prod = topProducts.find((o) => o._id.toString() === p._id.toString());
+    const topProducts = topProductsRaw.map((p) => {
+      const prod = ornaments.find((o) => o._id.toString() === p._id?.toString());
       return { _id: prod?.name || "Unknown", count: p.count };
     });
 
-    // Average order value (AOV)
-    const orders = await UserOrder.aggregate([
+    // ── Average order value ──────────────────────────────────────────
+    const aovResult = await UserOrder.aggregate([
       {
         $match: {
           createdAt: { $gte: startDate },
@@ -74,62 +231,79 @@ export const getAnalyticsSummary = async (req, res) => {
     ]);
 
     const avgOrderValue =
-      orders.length > 0
-        ? (orders[0].totalRevenue / orders[0].totalOrders).toFixed(2)
+      aovResult.length > 0
+        ? (aovResult[0].totalRevenue / aovResult[0].totalOrders).toFixed(2)
         : "0.00";
 
-    // 📊 Daily Stats (visits & purchases grouped by day)
-    const dailyStatsRaw = await TrackingLog.aggregate([
-      { $match: { timestamp: { $gte: startDate }, event: { $in: ["visit", "purchase"] } } },
+    // ── Daily or Monthly stats ───────────────────────────────────────
+    const groupId =
+      mode === "monthly"
+        ? { year: { $year: "$eventTimestamp" }, month: { $month: "$eventTimestamp" } }
+        : {
+            year: { $year: "$eventTimestamp" },
+            month: { $month: "$eventTimestamp" },
+            day: { $dayOfMonth: "$eventTimestamp" },
+          };
+
+    const statsRaw = await TrackingLog.aggregate([
+      {
+        $match: {
+          eventTimestamp: { $gte: startDate },
+          event: { $in: ["visit", "purchase"] },
+        },
+      },
       {
         $group: {
-          _id: {
-            day: { $dayOfMonth: "$timestamp" },
-            month: { $month: "$timestamp" },
-            year: { $year: "$timestamp" },
-            event: "$event",
-          },
+          _id: { ...groupId, event: "$event" },
           count: { $sum: 1 },
         },
       },
       {
         $group: {
-          _id: { day: "$_id.day", month: "$_id.month", year: "$_id.year" },
+          _id: mode === "monthly"
+            ? { year: "$_id.year", month: "$_id.month" }
+            : { year: "$_id.year", month: "$_id.month", day: "$_id.day" },
           stats: { $push: { event: "$_id.event", count: "$count" } },
         },
       },
-      { $sort: { "_id.year": 1, "_id.month": 1, "_id.day": 1 } },
+      {
+        $sort:
+          mode === "monthly"
+            ? { "_id.year": 1, "_id.month": 1 }
+            : { "_id.year": 1, "_id.month": 1, "_id.day": 1 },
+      },
     ]);
 
-    // 🌍 Country-based visitor stats
-const countryStatsRaw = await TrackingLog.aggregate([
-  { 
-    $match: { 
-      event: "visit",
-      timestamp: { $gte: startDate },
-      country: { $exists: true, $ne: "" }
-    } 
-  },
-  { $group: { _id: "$country", visits: { $sum: 1 } } },
-  { $sort: { visits: -1 } },
-  { $limit: 10 },
-]);
+    const dailyStats = statsRaw.map((d) => {
+      const mm = String(d._id.month).padStart(2, "0");
+      const dateKey =
+        mode === "monthly"
+          ? `${d._id.year}-${mm}`
+          : `${d._id.year}-${mm}-${String(d._id.day).padStart(2, "0")}`;
 
-const countryStats = countryStatsRaw.map((c) => ({
-  country: c._id,
-  visits: c.visits,
-}));
-
-
-    // Transform to { date, visits, purchases }
-    const dailyStats = dailyStatsRaw.map((d) => {
-      const dateKey = `${d._id.year}-${String(d._id.month).padStart(2, "0")}-${String(
-        d._id.day
-      ).padStart(2, "0")}`;
       const visits = d.stats.find((s) => s.event === "visit")?.count || 0;
       const purchases = d.stats.find((s) => s.event === "purchase")?.count || 0;
       return { date: dateKey, visits, purchases };
     });
+
+    // ── Country stats ────────────────────────────────────────────────
+    const countryStatsRaw = await TrackingLog.aggregate([
+      {
+        $match: {
+          event: "visit",
+          eventTimestamp: { $gte: startDate },
+          country: { $exists: true, $ne: "" },
+        },
+      },
+      { $group: { _id: "$country", visits: { $sum: 1 } } },
+      { $sort: { visits: -1 } },
+      { $limit: 10 },
+    ]);
+
+    const countryStats = countryStatsRaw.map((c) => ({
+      country: c._id,
+      visits: c.visits,
+    }));
 
     res.json({
       success: true,
@@ -139,9 +313,9 @@ const countryStats = countryStatsRaw.map((c) => ({
         purchases,
         conversionRate,
         avgOrderValue,
-        topProducts: topProductsMapped,
-        dailyStats, // ✅ now included for line chart
-        countryStats, // ✅ included for country-wise stats
+        topProducts,
+        dailyStats,
+        countryStats,
         range: `${days} days`,
       },
     });
@@ -154,3 +328,4 @@ const countryStats = countryStatsRaw.map((c) => ({
     });
   }
 };
+
