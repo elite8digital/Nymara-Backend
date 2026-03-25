@@ -1,6 +1,4 @@
 
-
-
 // import User from "../models/User.js";
 // import UserDetails from "../models/UserDetails.js";
 // import UserOrder from "../models/UserOrder.js";
@@ -148,6 +146,7 @@
 
 //     const order = await UserOrder.findOne({ oId: orderId })
 //       .populate("userId", "uId name email")
+//       .populate("products.productId", "name sku")
 //       .lean();
 
 //     if (!order) {
@@ -167,9 +166,10 @@
 //       deliveryLink: order.deliveryLink,
 
 //       orderItems: order.products.map((p) => ({
-//         productId: p.productId,
-//         productSKU: p.variant || "",
+//         productId: p.productId?._id || p.productId,
+//         productSKU: p.productId?.sku || "—",
 //         productName: p.productId?.name || "Product",
+//         variant: p.variant || "",
 //         quantity: p.quantity,
 //         displayPrice: p.price?.amount ?? 0,
 //         currency: p.price?.symbol ?? "₹",
@@ -396,7 +396,7 @@ export const getOrderDetails = async (req, res) => {
 
     const order = await UserOrder.findOne({ oId: orderId })
       .populate("userId", "uId name email")
-      .populate("products.productId", "name sku")
+      .populate("products.productId", "name sku metal")
       .lean();
 
     if (!order) {
@@ -415,16 +415,23 @@ export const getOrderDetails = async (req, res) => {
       razorpayPaymentId: order.razorpayPaymentId,
       deliveryLink: order.deliveryLink,
 
-      orderItems: order.products.map((p) => ({
-        productId: p.productId?._id || p.productId,
-        productSKU: p.productId?.sku || "—",
-        productName: p.productId?.name || "Product",
-        variant: p.variant || "",
-        quantity: p.quantity,
-        displayPrice: p.price?.amount ?? 0,
-        currency: p.price?.symbol ?? "₹",
-        total: (p.price?.amount ?? 0) * p.quantity,
-      })),
+      orderItems: order.products.map((p) => {
+        const priceAmount = p.price?.amount ?? p.price?.value ?? 0;
+        const priceSymbol = p.price?.symbol ?? "₹";
+        console.log(`📦 Product: ${p.productId?.name}, price:`, JSON.stringify(p.price), "→ amount:", priceAmount);
+        return {
+          productId: p.productId?._id || p.productId,
+          productSKU: p.productId?.sku || "—",
+          productName: p.productId?.name || "Product",
+          purity: p.productId?.metal?.purity || "—",
+          metalType: p.productId?.metal?.metalType || "—",
+          variant: p.variant || "",
+          quantity: p.quantity,
+          displayPrice: priceAmount,
+          currency: priceSymbol,
+          total: priceAmount * p.quantity,
+        };
+      }),
 
       customer: {
         customerId: order.userId.uId,
@@ -498,6 +505,7 @@ export const handleRefund = async (req, res) => {
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 
 
 
