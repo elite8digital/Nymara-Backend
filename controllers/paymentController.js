@@ -232,7 +232,7 @@ import Ornament from "../models/Ornament.js";
 import UserModel from "../models/User.js";
 import sendEmail from "../emailer/sendEmail.js";
 import axios from "axios";
-import sendWhatsAppMessage from "../emailer/whatsapp.js";
+import {sendWhatsAppMessage} from "../emailer/whatsapp.js";
 
 // 🔹 Initialize Razorpay instance
 const razorpay = new Razorpay({
