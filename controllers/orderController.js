@@ -314,7 +314,7 @@ import UserOrder from "../models/UserOrder.js";
 import Ornament from "../models/Ornament.js";
 import UserModel from "../models/User.js";
 import sendEmail from "../emailer/sendEmail.js";
-import sendCancelOrderMessage from "../emailer/whatsapp.js";
+import {sendCancelOrderMessage} from "../emailer/whatsapp.js";
 
 // 📦 Place new order
 export const placeOrder = async (req, res) => {
