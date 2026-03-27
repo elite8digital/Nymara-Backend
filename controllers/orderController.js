@@ -314,6 +314,7 @@ import UserOrder from "../models/UserOrder.js";
 import Ornament from "../models/Ornament.js";
 import UserModel from "../models/User.js";
 import sendEmail from "../emailer/sendEmail.js";
+import sendCancelOrderMessage from "../emailer/whatsapp.js";
 
 // 📦 Place new order
 export const placeOrder = async (req, res) => {
@@ -486,6 +487,18 @@ export const cancelOrder = async (req, res) => {
     } catch (err) {
       console.error(" Cancellation email failed:", err.message);
     }
+
+    // 🔹 WHATSAPP CANCEL MESSAGE (non-blocking)
+try {
+  if (user?.phoneNumber) {
+    await sendCancelOrderMessage(user.phoneNumber, order);
+    console.log("📱 WhatsApp cancel message sent");
+  } else {
+    console.warn("⚠️ User phone not available");
+  }
+} catch (err) {
+  console.error("⚠️ WhatsApp cancel failed:", err.message);
+}
 
     // 🔹 Final response
     return res.json({
