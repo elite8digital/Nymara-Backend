@@ -465,9 +465,11 @@ export const cancelOrder = async (req, res) => {
     order.status = "cancelled";
     await order.save();
 
+      const user = await UserModel.findById(req.user._id);
+
     // 🔹 Send cancellation email (NON-BLOCKING)
     try {
-      const user = await UserModel.findById(req.user._id);
+    
 
       await axios.post(
         "https://lets-taxify.onrender.com/api/nymara/contact/order-cancelled",
