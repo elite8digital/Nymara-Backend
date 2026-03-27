@@ -11,6 +11,7 @@ router.post("/book", async (req, res) => {
       phone,
       preferredDate,
       preferredTime,
+      timezone,
       appointmentType,
       message,
     } = req.body;
@@ -33,6 +34,7 @@ router.post("/book", async (req, res) => {
       <p><strong>Appointment Type:</strong> ${appointmentType || "Consultation"}</p>
       <p><strong>Date:</strong> ${preferredDate}</p>
       <p><strong>Time:</strong> ${preferredTime}</p>
+      <p><strong>Timezone:</strong> ${timezone || "Not Specified"}</p>
       <p><strong>Message:</strong> ${message || "N/A"}</p>
     `;
 
@@ -43,7 +45,7 @@ router.post("/book", async (req, res) => {
       <ul>
         <li><b>Type:</b> ${appointmentType || "Consultation"}</li>
         <li><b>Date:</b> ${preferredDate}</li>
-        <li><b>Time:</b> ${preferredTime}</li>
+        <li><b>Time:</b> ${preferredTime} (${timezone || "Your local time"})</li>
       </ul>
       <p>📩 You’ll receive a Microsoft Teams link 24 hours before your appointment.</p>
       <p>- Nymara Jewels Team ✨</p>
