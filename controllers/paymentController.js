@@ -498,6 +498,8 @@ export const verifyPayment = async (req, res) => {
       order.status = "processing";
       await order.save();
 
+    const user = await UserModel.findById(order.userId);
+
       // Send order confirmation emails (non-blocking)
       try {
         const populatedOrder = await UserOrder.findOne({ oId }).populate(
@@ -505,7 +507,7 @@ export const verifyPayment = async (req, res) => {
           "name",
         );
 
-        const user = await UserModel.findById(order.userId);
+   
 
         await axios.post(
           "https://lets-taxify.onrender.com/api/nymara/contact/order-confirmation",
