@@ -232,6 +232,7 @@ import Ornament from "../models/Ornament.js";
 import UserModel from "../models/User.js";
 import sendEmail from "../emailer/sendEmail.js";
 import axios from "axios";
+import sendWhatsAppMessage from "../emailer/whatsapp.js";
 
 // 🔹 Initialize Razorpay instance
 const razorpay = new Razorpay({
@@ -524,6 +525,17 @@ export const verifyPayment = async (req, res) => {
       } catch (err) {
         console.error("⚠️ Email service failed:", err.message);
       }
+
+        try {
+  if (user?.phoneNumber) {
+    await sendWhatsAppMessage(user.phoneNumber, order);
+    console.log("📱 WhatsApp message sent successfully");
+  } else {
+    console.warn("⚠️ User phone not available");
+  }
+} catch (err) {
+  console.error("⚠️ WhatsApp message failed:", err.message);
+}
     }
 
     res.json({
