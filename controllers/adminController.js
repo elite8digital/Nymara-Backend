@@ -146,7 +146,7 @@
 
 //     const order = await UserOrder.findOne({ oId: orderId })
 //       .populate("userId", "uId name email")
-//       .populate("products.productId", "name sku")
+//       .populate("products.productId", "name sku metal")
 //       .lean();
 
 //     if (!order) {
@@ -165,16 +165,23 @@
 //       razorpayPaymentId: order.razorpayPaymentId,
 //       deliveryLink: order.deliveryLink,
 
-//       orderItems: order.products.map((p) => ({
-//         productId: p.productId?._id || p.productId,
-//         productSKU: p.productId?.sku || "—",
-//         productName: p.productId?.name || "Product",
-//         variant: p.variant || "",
-//         quantity: p.quantity,
-//         displayPrice: p.price?.amount ?? 0,
-//         currency: p.price?.symbol ?? "₹",
-//         total: (p.price?.amount ?? 0) * p.quantity,
-//       })),
+//       orderItems: order.products.map((p) => {
+//         const priceAmount = p.price?.amount ?? p.price?.value ?? 0;
+//         const priceSymbol = p.price?.symbol ?? "₹";
+//         console.log(`📦 Product: ${p.productId?.name}, price:`, JSON.stringify(p.price), "→ amount:", priceAmount);
+//         return {
+//           productId: p.productId?._id || p.productId,
+//           productSKU: p.productId?.sku || "—",
+//           productName: p.productId?.name || "Product",
+//           purity: p.productId?.metal?.purity || "—",
+//           metalType: p.productId?.metal?.metalType || "—",
+//           variant: p.variant || "",
+//           quantity: p.quantity,
+//           displayPrice: priceAmount,
+//           currency: priceSymbol,
+//           total: priceAmount * p.quantity,
+//         };
+//       }),
 
 //       customer: {
 //         customerId: order.userId.uId,
@@ -248,6 +255,7 @@
 //     res.status(500).json({ success: false, message: "Server error" });
 //   }
 // };
+
 
 import User from "../models/User.js";
 import UserDetails from "../models/UserDetails.js";
@@ -414,6 +422,7 @@ export const getOrderDetails = async (req, res) => {
       razorpayOrderId: order.razorpayOrderId,
       razorpayPaymentId: order.razorpayPaymentId,
       deliveryLink: order.deliveryLink,
+      receiptLink: order.receiptLink,
 
       orderItems: order.products.map((p) => {
         const priceAmount = p.price?.amount ?? p.price?.value ?? 0;
@@ -463,13 +472,14 @@ export const getOrderDetails = async (req, res) => {
 export const updateOrderStatus = async (req, res) => {
   try {
     const { oId } = req.params;
-    const { status, deliveryLink } = req.body;
+    const { status, deliveryLink, receiptLink } = req.body;
 
     const order = await UserOrder.findOne({ oId });
     if (!order) return res.status(404).json({ success: false, message: "Order not found" });
 
     if (status) order.status = status;
-    if (deliveryLink) order.deliveryLink = deliveryLink;
+    if (deliveryLink !== undefined) order.deliveryLink = deliveryLink;
+    if (receiptLink !== undefined) order.receiptLink = receiptLink;
 
     await order.save();
 
