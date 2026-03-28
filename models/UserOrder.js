@@ -161,6 +161,7 @@ const userOrderSchema = new mongoose.Schema(
     },
 
     deliveryLink: { type: String, default: null },
+    receiptLink:{type:String,default:null},
     billUrl: { type: String, default: null },
 
     status: {
