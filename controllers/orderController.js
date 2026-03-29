@@ -376,28 +376,57 @@ export const updatePayment = async (req, res) => {
 };
 
 // 👤 Get all orders for logged-in user
+// export const getMyOrders = async (req, res) => {
+//   try {
+//     console.log("📦 getMyOrders hit");
+//     console.log("👤 req.user:", JSON.stringify(req.user));
+
+//     const userId = req.user._id || req.user.id;
+//     console.log("🔍 Querying orders for userId:", userId);
+
+//     const allOrders = await UserOrder.find({}).limit(5).lean();
+//      console.log("🗃️ Sample orders in DB (first 5):", allOrders.map(o => ({ oId: o.oId, userId: o.userId?.toString() })));
+//     //console.log("🗃️ Sample orders in DB (first 5):", allOrders.map(o => ({ oId: o.oId, userId: o.userId?.toString(), paymentStatus: o.paymentStatus })));
+
+//      const orders = await UserOrder.find({ userId }).sort({ createdAt: -1 })
+//     // Only fetch orders with "Paid" payment status
+//     // console.log("🔍 Filtering orders with paymentStatus: 'Paid'");
+//     // const orders = await UserOrder.find({ userId, paymentStatus: "Paid" }).sort({ createdAt: -1 })
+//       .populate("products.productId", "name sku coverImage");
+//       console.log("✅ Orders found for user:", orders.length);
+//     // console.log("✅ Paid orders found for user:", orders.length);
+//     // console.log("📋 Order IDs returned:", orders.map(o => ({ oId: o.oId, paymentStatus: o.paymentStatus })));
+
+//     res.json(orders);
+//   } catch (error) {
+//     console.error("❌ Error fetching orders:", error);
+//     res.status(500).json({ success: false, message: "Server error" });
+//   }
+// };
+
 export const getMyOrders = async (req, res) => {
   try {
-    console.log("📦 getMyOrders hit");
-    console.log("👤 req.user:", JSON.stringify(req.user));
+   
 
     const userId = req.user._id || req.user.id;
-    console.log("🔍 Querying orders for userId:", userId);
+    
 
     const allOrders = await UserOrder.find({}).limit(5).lean();
-     console.log("🗃️ Sample orders in DB (first 5):", allOrders.map(o => ({ oId: o.oId, userId: o.userId?.toString() })));
-    //console.log("🗃️ Sample orders in DB (first 5):", allOrders.map(o => ({ oId: o.oId, userId: o.userId?.toString(), paymentStatus: o.paymentStatus })));
+  
 
-     const orders = await UserOrder.find({ userId }).sort({ createdAt: -1 })
-    // Only fetch orders with "Paid" payment status
-    // console.log("🔍 Filtering orders with paymentStatus: 'Paid'");
-    // const orders = await UserOrder.find({ userId, paymentStatus: "Paid" }).sort({ createdAt: -1 })
+    const orders = await UserOrder.find({ userId }).sort({ createdAt: -1 })
       .populate("products.productId", "name sku coverImage");
-      console.log("✅ Orders found for user:", orders.length);
-    // console.log("✅ Paid orders found for user:", orders.length);
-    // console.log("📋 Order IDs returned:", orders.map(o => ({ oId: o.oId, paymentStatus: o.paymentStatus })));
+ 
 
-    res.json(orders);
+    // Map billUrl → receiptLink for frontend
+    const mapped = orders.map((o) => {
+      const obj = o.toObject();
+      obj.receiptLink = obj.receiptLink || null;
+      console.log(`🧾 Order ${obj.oId} → billUrl: ${obj.billUrl}, receiptLink: ${obj.receiptLink}`);
+      return obj;
+    });
+
+    res.json(mapped);
   } catch (error) {
     console.error("❌ Error fetching orders:", error);
     res.status(500).json({ success: false, message: "Server error" });
