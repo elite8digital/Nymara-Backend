@@ -385,14 +385,17 @@ export const getMyOrders = async (req, res) => {
     console.log("🔍 Querying orders for userId:", userId);
 
     const allOrders = await UserOrder.find({}).limit(5).lean();
-    console.log("🗃️ Sample orders in DB (first 5):", allOrders.map(o => ({ oId: o.oId, userId: o.userId?.toString(), paymentStatus: o.paymentStatus })));
+     console.log("🗃️ Sample orders in DB (first 5):", allOrders.map(o => ({ oId: o.oId, userId: o.userId?.toString() })));
+    //console.log("🗃️ Sample orders in DB (first 5):", allOrders.map(o => ({ oId: o.oId, userId: o.userId?.toString(), paymentStatus: o.paymentStatus })));
 
+     const orders = await UserOrder.find({ userId }).sort({ createdAt: -1 })
     // Only fetch orders with "Paid" payment status
-    console.log("🔍 Filtering orders with paymentStatus: 'Paid'");
-    const orders = await UserOrder.find({ userId, paymentStatus: "Paid" }).sort({ createdAt: -1 })
+    // console.log("🔍 Filtering orders with paymentStatus: 'Paid'");
+    // const orders = await UserOrder.find({ userId, paymentStatus: "Paid" }).sort({ createdAt: -1 })
       .populate("products.productId", "name sku coverImage");
-    console.log("✅ Paid orders found for user:", orders.length);
-    console.log("📋 Order IDs returned:", orders.map(o => ({ oId: o.oId, paymentStatus: o.paymentStatus })));
+      console.log("✅ Orders found for user:", orders.length);
+    // console.log("✅ Paid orders found for user:", orders.length);
+    // console.log("📋 Order IDs returned:", orders.map(o => ({ oId: o.oId, paymentStatus: o.paymentStatus })));
 
     res.json(orders);
   } catch (error) {
