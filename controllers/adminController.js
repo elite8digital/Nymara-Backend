@@ -288,43 +288,241 @@ const getPriceForCurrency = (ornament, currency = "INR") => {
 };
 
 // 👤 Get summary of all customers (with order counts)
+// export const getCustomersSummary = async (req, res) => {
+//   try {
+//     const users = await User.find({ isAdmin: false }).select("uId name email phoneNumber");
+
+//     const userDetails = await UserDetails.find({
+//       userId: { $in: users.map((u) => u._id) },
+//     }).select("userId address");
+
+//     const orders = await UserOrder.aggregate([
+//       { $group: { _id: "$userId", orderCount: { $sum: 1 } } },
+//     ]);
+
+//     const result = users.map((user) => {
+//       const detail = userDetails.find(
+//         (d) => d.userId.toString() === user._id.toString()
+//       );
+//       const orderInfo = orders.find(
+//         (o) => o._id.toString() === user._id.toString()
+//       );
+
+//       const addr = detail?.address || {};
+//       const city = addr.city || addr.cityInternational || "";
+//       const state = addr.state || addr.stateProvince || "";
+
+//       return {
+//         _id: user._id,
+//         customerId: user.uId,
+//         name: user.name,
+//         email: user.email,
+//         phoneNumber: user.phoneNumber || null,
+//         orderCount: orderInfo ? orderInfo.orderCount : 0,
+//         city,
+//         state,
+//       };
+//     });
+
+//     res.json({ success: true, customers: result });
+//   } catch (err) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch customers",
+//       error: err.message,
+//     });
+//   }
+// };
+
 export const getCustomersSummary = async (req, res) => {
   try {
-    const users = await User.find({ isAdmin: false }).select("uId name email phoneNumber");
+    let {
+      page = 1,
+      limit = 10,
+      search,
+      city,
+      state,
+    } = req.query;
 
-    const userDetails = await UserDetails.find({
-      userId: { $in: users.map((u) => u._id) },
-    }).select("userId address");
+    page = parseInt(page);
+    limit = parseInt(limit);
 
-    const orders = await UserOrder.aggregate([
-      { $group: { _id: "$userId", orderCount: { $sum: 1 } } },
-    ]);
+    // 🔥 Base match (non-admin users)
+    const matchUser = { isAdmin: false };
 
-    const result = users.map((user) => {
-      const detail = userDetails.find(
-        (d) => d.userId.toString() === user._id.toString()
-      );
-      const orderInfo = orders.find(
-        (o) => o._id.toString() === user._id.toString()
-      );
+    // 🔍 Search filter
+    if (search) {
+      matchUser.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { phoneNumber: { $regex: search, $options: "i" } },
+        { uId: { $regex: search, $options: "i" } },
+      ];
+    }
 
-      const addr = detail?.address || {};
-      const city = addr.city || addr.cityInternational || "";
-      const state = addr.state || addr.stateProvince || "";
+    const pipeline = [
+      { $match: matchUser },
 
-      return {
-        _id: user._id,
-        customerId: user.uId,
-        name: user.name,
-        email: user.email,
-        phoneNumber: user.phoneNumber || null,
-        orderCount: orderInfo ? orderInfo.orderCount : 0,
-        city,
-        state,
-      };
+      // 👉 Join UserDetails
+      {
+        $lookup: {
+          from: "userdetails",
+          localField: "_id",
+          foreignField: "userId",
+          as: "details",
+        },
+      },
+      {
+        $unwind: {
+          path: "$details",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      // 👉 Join Orders
+      {
+        $lookup: {
+          from: "userorders",
+          localField: "_id",
+          foreignField: "userId",
+          as: "orders",
+        },
+      },
+
+      // 👉 Add computed fields
+      {
+        $addFields: {
+          orderCount: { $size: "$orders" },
+          city: {
+            $ifNull: [
+              "$details.address.city",
+              "$details.address.cityInternational",
+            ],
+          },
+          state: {
+            $ifNull: [
+              "$details.address.state",
+              "$details.address.stateProvince",
+            ],
+          },
+        },
+      },
+
+      // 📍 City filter
+      ...(city
+        ? [
+            {
+              $match: {
+                city: { $regex: city, $options: "i" },
+              },
+            },
+          ]
+        : []),
+
+      // 📍 State filter
+      ...(state
+        ? [
+            {
+              $match: {
+                state: { $regex: state, $options: "i" },
+              },
+            },
+          ]
+        : []),
+
+      // 📦 Projection
+      {
+        $project: {
+          _id: 1,
+          customerId: "$uId",
+          name: 1,
+          email: 1,
+          phoneNumber: 1,
+          orderCount: 1,
+          city: 1,
+          state: 1,
+        },
+      },
+
+      { $sort: { orderCount: -1 } },
+
+      // Pagination
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+    ];
+
+    // ✅ Data
+    const customers = await User.aggregate(pipeline);
+
+    // ✅ Count pipeline (IMPORTANT)
+    const countPipeline = [
+      { $match: matchUser },
+
+      {
+        $lookup: {
+          from: "userdetails",
+          localField: "_id",
+          foreignField: "userId",
+          as: "details",
+        },
+      },
+      {
+        $unwind: {
+          path: "$details",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      {
+        $addFields: {
+          city: {
+            $ifNull: [
+              "$details.address.city",
+              "$details.address.cityInternational",
+            ],
+          },
+          state: {
+            $ifNull: [
+              "$details.address.state",
+              "$details.address.stateProvince",
+            ],
+          },
+        },
+      },
+
+      ...(city
+        ? [
+            {
+              $match: {
+                city: { $regex: city, $options: "i" },
+              },
+            },
+          ]
+        : []),
+
+      ...(state
+        ? [
+            {
+              $match: {
+                state: { $regex: state, $options: "i" },
+              },
+            },
+          ]
+        : []),
+
+      { $count: "total" },
+    ];
+
+    const totalResult = await User.aggregate(countPipeline);
+    const totalCustomers = totalResult[0]?.total || 0;
+
+    res.json({
+      success: true,
+      page,
+      totalPages: Math.ceil(totalCustomers / limit),
+      totalCustomers,
+      customers,
     });
-
-    res.json({ success: true, customers: result });
   } catch (err) {
     res.status(500).json({
       success: false,
@@ -364,19 +562,158 @@ export const getCustomerOrders = async (req, res) => {
 };
 
 // 📦 Get all orders (admin dashboard)
+// export const getAllOrders = async (req, res) => {
+//   try {
+//     const orders = await UserOrder.find()
+//       .populate("userId", "uId name email")
+//       .sort({ createdAt: -1 });
+
+//     const formattedOrders = orders.map((order) => ({
+//       orderId: order.oId,
+//       date: order.orderDate,
+//       customer: {
+//         id: order.userId?.uId,
+//         name: order.userId?.name,
+//         email: order.userId?.email,
+//       },
+//       items: order.products.length,
+//       amount: order.totalAmount?.amount ?? 0,
+//       currency: order.totalAmount?.symbol ?? "₹",
+//       status: order.status,
+//       paymentStatus: order.paymentStatus,
+//       city: order.deliveryAddress?.city || "Not Provided",
+//       state: order.deliveryAddress?.state || "Not Provided",
+//     }));
+
+//     res.json({ success: true, orders: formattedOrders });
+//   } catch (err) {
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch orders",
+//       error: err.message,
+//     });
+//   }
+// };
+
 export const getAllOrders = async (req, res) => {
   try {
-    const orders = await UserOrder.find()
-      .populate("userId", "uId name email")
-      .sort({ createdAt: -1 });
+    let {
+      page = 1,
+      limit = 10,
+      status,
+      paymentStatus,
+      search,
+      startDate,
+      endDate,
+      minAmount,
+      maxAmount,
+    } = req.query;
 
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    //  Base match query
+    const matchStage = {};
+
+    if (status) matchStage.status = status;
+    if (paymentStatus) matchStage.paymentStatus = paymentStatus;
+
+    //  Date filter
+    if (startDate || endDate) {
+      matchStage.createdAt = {};
+      if (startDate) matchStage.createdAt.$gte = new Date(startDate);
+      if (endDate) matchStage.createdAt.$lte = new Date(endDate);
+    }
+
+    //  Amount filter
+    if (minAmount || maxAmount) {
+      matchStage["totalAmount.amount"] = {};
+      if (minAmount)
+        matchStage["totalAmount.amount"].$gte = Number(minAmount);
+      if (maxAmount)
+        matchStage["totalAmount.amount"].$lte = Number(maxAmount);
+    }
+
+    //  AGGREGATION PIPELINE (BEST APPROACH)
+    const pipeline = [
+      { $match: matchStage },
+
+      {
+        $lookup: {
+          from: "users", // collection name in MongoDB
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+
+      //  Search across order + user
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { oId: { $regex: search, $options: "i" } },
+                  { "user.name": { $regex: search, $options: "i" } },
+                  { "user.email": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+
+      { $sort: { createdAt: -1 } },
+
+      // Pagination
+      { $skip: (page - 1) * limit },
+      { $limit: limit },
+    ];
+
+    //  Fetch paginated orders
+    const orders = await UserOrder.aggregate(pipeline);
+
+    //  Count pipeline (IMPORTANT)
+    const countPipeline = [
+      { $match: matchStage },
+      {
+        $lookup: {
+          from: "users",
+          localField: "userId",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+
+      ...(search
+        ? [
+            {
+              $match: {
+                $or: [
+                  { oId: { $regex: search, $options: "i" } },
+                  { "user.name": { $regex: search, $options: "i" } },
+                  { "user.email": { $regex: search, $options: "i" } },
+                ],
+              },
+            },
+          ]
+        : []),
+
+      { $count: "total" },
+    ];
+
+    const totalResult = await UserOrder.aggregate(countPipeline);
+    const totalOrders = totalResult[0]?.total || 0;
+
+    //  Format response
     const formattedOrders = orders.map((order) => ({
       orderId: order.oId,
       date: order.orderDate,
       customer: {
-        id: order.userId?.uId,
-        name: order.userId?.name,
-        email: order.userId?.email,
+        id: order.user?.uId,
+        name: order.user?.name,
+        email: order.user?.email,
       },
       items: order.products.length,
       amount: order.totalAmount?.amount ?? 0,
@@ -387,7 +724,13 @@ export const getAllOrders = async (req, res) => {
       state: order.deliveryAddress?.state || "Not Provided",
     }));
 
-    res.json({ success: true, orders: formattedOrders });
+    res.json({
+      success: true,
+      page,
+      totalPages: Math.ceil(totalOrders / limit),
+      totalOrders,
+      orders: formattedOrders,
+    });
   } catch (err) {
     res.status(500).json({
       success: false,
