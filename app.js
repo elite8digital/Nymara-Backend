@@ -25,6 +25,7 @@ import contactRoutes from "./routes//sizeRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 
 import orderRoutes from "./routes/orderRoutes.js";
+import wishlistRoutes from "./routes/wishlistRoutes.js";
 
 
 import bcrypt from "bcryptjs";
@@ -97,6 +98,7 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/payments", paymentRoutes);
 
 app.use("/api/orders", orderRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 
 
 
